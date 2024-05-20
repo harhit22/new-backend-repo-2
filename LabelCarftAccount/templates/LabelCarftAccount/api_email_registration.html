@@ -1,0 +1,20 @@
+{% autoescape off %}
+hie
+
+Thank you for registering with lio_world!
+
+At lio_world, we are committed to providing you with top-notch service and a seamless experience. With our extensive selection of medical products and cutting-edge image processing technology, we aim to revolutionize the way you shop for healthcare essentials.
+
+From pharmaceuticals to medical devices, our platform offers a wide range of products to meet your needs. Whether you're looking for prescription medications, diagnostic tools, or wellness products, we've got you covered.
+
+As a valued member of our community, you'll enjoy exclusive access to special offers, personalized recommendations, and expert advice from our team of healthcare professionals.
+
+Stay tuned for exciting updates and promotions, and don't hesitate to reach out if you have any questions or concerns. We're here to support you every step of the way on your journey to better health and well-being.
+
+Once again, thank you for choosing lio_world. We look forward to serving you and making your online shopping experience truly exceptional.
+
+Best regards,
+The lio_world Team
+
+    http://{{ domain }}{% url 'api-emai-verification' uidb64=uid token=token %}
+{% endautoescape %}
