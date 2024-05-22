@@ -27,6 +27,7 @@ class UserRegistrationAPIView(generics.CreateAPIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
     def perform_create(self, serializer):
         return serializer.save()
 
@@ -69,7 +70,7 @@ class LoginView(GenericAPIView):
         # Generate the JWT token
         jwt_token = JWTAuthentication.create_jwt(user)
 
-        return Response({'token': jwt_token})
+        return Response({'token': jwt_token, "username": user.username, 'user_id': user.id, 'email': user.email})
 
 
 class LogoutView(GenericAPIView):
