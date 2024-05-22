@@ -40,14 +40,14 @@ INSTALLED_APPS = [
 ]
 
 ## additional apps
-
 INSTALLED_APPS += [
     'LabelCraft',
     'LabelCarftAccount',
     'corsheaders',
     'mathfilters',
     'rest_framework_simplejwt.token_blacklist',
-    'rest_framework'
+    'rest_framework',
+    'LabelCarftProjectSetup',
 ]
 
 
