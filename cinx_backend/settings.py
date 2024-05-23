@@ -11,9 +11,13 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -48,6 +52,7 @@ INSTALLED_APPS += [
     'rest_framework_simplejwt.token_blacklist',
     'rest_framework',
     'LabelCarftProjectSetup',
+    'UploadDataSetLableCraft'
 ]
 
 
@@ -155,7 +160,7 @@ EMAIL_USE_TLS = 'True'
 
 EMAIL_HOST_USER = 'harshitshrimalee22@gmail.com'
 
-EMAIL_HOST_PASSWORD = 'nycf dard wcjs icos'
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
 
 # ----------------------rest frame work related setting-------------------------- #
@@ -163,7 +168,7 @@ EMAIL_HOST_PASSWORD = 'nycf dard wcjs icos'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'LabelCarftAccount.backend.JWTAuthentication',

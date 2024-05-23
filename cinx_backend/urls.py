@@ -22,7 +22,9 @@ from django.conf.urls.static import static
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include('LabelCraft.urls')),
-    path("account/", include("LabelCarftAccount.urls"))
+    path("account/", include("LabelCarftAccount.urls")),
+    path("project/", include("LabelCarftProjectSetup.urls")),
+    path("project/upload/", include('UploadDataSetLableCraft.urls'))
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

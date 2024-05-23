@@ -10,6 +10,7 @@ class Project(models.Model):
     created_by = models.ForeignKey(User, related_name='created_projects', on_delete=models.CASCADE)
     members = models.ManyToManyField(User, related_name='projects', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    dataset = models.FileField(upload_to='datasets/%Y/%m/%d/', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -18,7 +19,7 @@ class Project(models.Model):
 class ProjectInvitation(models.Model):
     project = models.ForeignKey(Project, related_name='invitations', on_delete=models.CASCADE)
     email = models.EmailField()
-    token = models.CharField(max_length=50, unique=True, default=get_random_string)
+    token = models.CharField(max_length=50, unique=True, default=get_random_string(length=20))
     created_at = models.DateTimeField(default=timezone.now)
     accepted = models.BooleanField(default=False)
     registered_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
