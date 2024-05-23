@@ -95,7 +95,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'image_labeling_db',
         'USER': 'root',
-        'PASSWORD': 'mansi@123',
+        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '3306',
     }
