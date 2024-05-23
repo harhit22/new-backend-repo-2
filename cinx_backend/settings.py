@@ -52,7 +52,8 @@ INSTALLED_APPS += [
     'rest_framework_simplejwt.token_blacklist',
     'rest_framework',
     'LabelCarftProjectSetup',
-    'UploadDataSetLableCraft'
+    'UploadDataSetLableCraft',
+    'reteriveDataset',
 ]
 
 
@@ -179,11 +180,11 @@ REST_FRAMEWORK = {
 JWT_SECRET_KEY = 'JWT_SECRET_KEY'
 
 CORS_ORIGIN_WHITELIST = [
-    'https://5838-2405-201-5c18-6022-d98c-123-484f-884b.ngrok-free.app',
+    'http://localhost:3000',
 ]
 
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ['https://5838-2405-201-5c18-6022-d98c-123-484f-884b.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
 
 
 # settings.py
@@ -191,3 +192,8 @@ CSRF_TRUSTED_ORIGINS = ['https://5838-2405-201-5c18-6022-d98c-123-484f-884b.ngro
 JWT_CONF = {
     'TOKEN_LIFETIME_HOURS': 24  # Example value, adjust according to your requirements
 }
+
+
+## cors
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000', ]

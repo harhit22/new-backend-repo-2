@@ -2,6 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+import os
+
+
+def dataset_upload_path(instance, filename):
+    # Assuming 'instance' is a Project instance
+    # 'filename' is the original filename of the uploaded file
+    return f"datasets/{instance.id}/{filename}"
 
 
 class Project(models.Model):
@@ -10,7 +17,7 @@ class Project(models.Model):
     created_by = models.ForeignKey(User, related_name='created_projects', on_delete=models.CASCADE)
     members = models.ManyToManyField(User, related_name='projects', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    dataset = models.FileField(upload_to='datasets/%Y/%m/%d/', null=True, blank=True)
+    dataset = models.FileField(upload_to=dataset_upload_path, null=True, blank=True)
 
     def __str__(self):
         return self.name

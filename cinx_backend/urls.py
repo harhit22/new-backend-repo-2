@@ -24,7 +24,8 @@ urlpatterns = [
     path("", include('LabelCraft.urls')),
     path("account/", include("LabelCarftAccount.urls")),
     path("project/", include("LabelCarftProjectSetup.urls")),
-    path("project/upload/", include('UploadDataSetLableCraft.urls'))
+    path("project/upload/", include('UploadDataSetLableCraft.urls')),
+    path("project/reterive/", include('reteriveDataset.urls'))
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
