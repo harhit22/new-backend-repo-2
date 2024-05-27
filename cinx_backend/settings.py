@@ -54,6 +54,7 @@ INSTALLED_APPS += [
     'LabelCarftProjectSetup',
     'UploadDataSetLableCraft',
     'reteriveDataset',
+    'StoreLabelData',
 ]
 
 
@@ -190,7 +191,7 @@ CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
 # settings.py
 
 JWT_CONF = {
-    'TOKEN_LIFETIME_HOURS': 24  # Example value, adjust according to your requirements
+    'TOKEN_LIFETIME_HOURS': 500
 }
 
 

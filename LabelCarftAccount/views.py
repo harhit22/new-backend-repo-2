@@ -76,6 +76,7 @@ class LoginView(GenericAPIView):
 class LogoutView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
+
     def post(self, request):
         # Instantiate JWTAuthentication to access the invalidate_token method
         jwt_auth = JWTAuthentication()
