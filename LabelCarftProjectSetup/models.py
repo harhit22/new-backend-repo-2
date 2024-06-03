@@ -6,8 +6,6 @@ import os
 
 
 def dataset_upload_path(instance, filename):
-    # Assuming 'instance' is a Project instance
-    # 'filename' is the original filename of the uploaded file
     return f"datasets/{instance.id}/{filename}"
 
 
