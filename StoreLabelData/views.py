@@ -24,11 +24,9 @@ def list_dataset_files(request, project_id):
     if not os.path.exists(dataset_path):
         return JsonResponse({'success': False, 'error': 'Dataset not found'})
 
-    # List all files in the dataset directory
     file_list = []
     for root, dirs, files in os.walk(dataset_path):
         for file in files:
-            # Extract the file name and append to file_list
             file_list.append(os.path.basename(file))
 
     return JsonResponse({'success': True, 'files': file_list})
@@ -48,13 +46,12 @@ def get_image_id(request):
 class DeleteLabelsForImage(APIView):
     def post(self, request, *args, **kwargs):
         try:
-            data = json.loads(request.body)  # Parse JSON data from request body
-            image_id = data.get('image_id')  # Retrieve image_id from parsed JSON data
+            data = json.loads(request.body)
+            image_id = data.get('image_id')
             print(f"Image ID: {image_id}")
             if not image_id:
                 raise ValueError("Image ID is required")
 
-            # Ensure the image_id is converted to an integer
             image_id = int(image_id)
 
             # Debug the SQL query being executed

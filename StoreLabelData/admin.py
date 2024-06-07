@@ -5,13 +5,20 @@ import os
 from .models import Image, Label
 
 
-class LabelAdmin(admin.ModelAdmin):
-    list_display = ('label', 'image_name', 'x', 'y', 'width', 'height', 'updated_at')
+class ImageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'image_name', 'project', 'category', 'image_file')
 
     def image_name(self, obj):
-        return os.path.splitext(os.path.basename(obj.image.image_file.path))[0]
+        return os.path.splitext(os.path.basename(obj.image_file.path))[0]
 
-    image_name.admin_order_field = 'image__image_file'
+    image_name.short_description = 'Image'
 
-admin.site.register(Image)
+
+
+
+class LabelAdmin(admin.ModelAdmin):
+    list_display = ('id', 'image_id', 'image', 'label', 'x', 'y', 'width', 'height', 'updated_at')
+
+
+admin.site.register(Image, ImageAdmin)
 admin.site.register(Label, LabelAdmin)

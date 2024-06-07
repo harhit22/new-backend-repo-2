@@ -55,7 +55,8 @@ INSTALLED_APPS += [
     'UploadDataSetLableCraft',
     'reteriveDataset',
     'StoreLabelData',
-    'exportdatainyolov8'
+    'exportdatainyolov8',
+    'ReterviveCategoryData'
 ]
 
 
@@ -96,7 +97,7 @@ WSGI_APPLICATION = "cinx_backend.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'image_labeling_db',
+        'NAME': 'labels',
         'USER': 'root',
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
         'HOST': 'localhost',

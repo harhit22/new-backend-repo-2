@@ -4,13 +4,20 @@ from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-from .models import Project, ProjectInvitation
-from LabelCarftProjectSetup.serializers import ProjectSerializer, ProjectInvitationSerializer
+from .models import Project, ProjectInvitation, ProjectCategory, Condition, Toxicity, Grade, WasteType, Material
+from LabelCarftProjectSetup.serializers import ProjectSerializer, ProjectInvitationSerializer, ProjectCategorySerializer
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from django.shortcuts import redirect
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+
+from .serializers import (ProjectCategorySerializer,
+    MaterialSerializer,
+    GradeSerializer,
+    ConditionSerializer,
+    ToxicitySerializer,
+    WasteTypeSerializer,)
 
 
 
@@ -93,6 +100,71 @@ class ProjectListView(APIView):
         ).distinct()
         serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ProjectCategoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
+        user = request.user
+        project = get_object_or_404(Project, id=project_id)
+        project_categories = ProjectCategory.objects.filter(project=project)
+        serializer = ProjectCategorySerializer(project_categories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class GenericCategoryDataRetrieveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, model_name, cat_id):
+        category = get_object_or_404(ProjectCategory, id=cat_id)
+        serializer = None
+        data = []
+
+        model_name = model_name.lower()
+
+        if model_name in ['material', 'grade', 'condition', 'toxicity', 'wastetype']:
+            # Get the appropriate model based on model_name
+            if model_name != "wastetype":
+                model = globals()[model_name.capitalize()]
+                queryset = model.objects.filter(category=category)
+                serializer = globals()[f"{model_name.capitalize()}Serializer"](queryset, many=True)
+            else:
+                model_name = 'WasteType'
+                model =  globals()[model_name]
+                queryset = model.objects.filter(category=category)
+                serializer = globals()[f"{model_name}Serializer"](queryset, many=True)
+
+
+
+            if serializer:
+                data = serializer.data
+                print(serializer.data)
+                try:
+                    colors = {item['name']: item['color'] for item in serializer.data}
+                except:
+                    colors = {}
+            metarial_list = []
+            for d in data:
+
+                metarial_list.append(d['name'])
+
+
+            response_data = {
+                'data': metarial_list,
+                'colors': colors
+            }
+
+        else:
+            return Response({'error': 'Invalid model name'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+
+
 
 
 
