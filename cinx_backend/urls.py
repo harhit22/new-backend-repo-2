@@ -30,4 +30,9 @@ urlpatterns = [
     path("project/yolov8", include('exportdatainyolov8.urls'))
 ]
 
+urlpatterns += [
+    path("categoryImage/", include('ReterviveCategoryData.urls')),
+    path("categoryImageSave/", include('storeCategoryData.urls'))
+]
+
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
