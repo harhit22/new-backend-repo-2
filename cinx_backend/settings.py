@@ -57,7 +57,8 @@ INSTALLED_APPS += [
     'StoreLabelData',
     'exportdatainyolov8',
     'ReterviveCategoryData',
-    'storeCategoryData'
+    'storeCategoryData',
+    'trackAssginImagesAnnoatation'
 ]
 
 

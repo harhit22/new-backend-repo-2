@@ -32,7 +32,8 @@ urlpatterns = [
 
 urlpatterns += [
     path("categoryImage/", include('ReterviveCategoryData.urls')),
-    path("categoryImageSave/", include('storeCategoryData.urls'))
+    path("categoryImageSave/", include('storeCategoryData.urls')),
+    path("trackannoated/", include('trackAssginImagesAnnoatation.urls'))
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

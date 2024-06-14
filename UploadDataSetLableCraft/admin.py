@@ -1,7 +1,9 @@
 from django.contrib import admin
 from .models import OriginalImage
 
-# Register your models here.
 
+class OriginalImageAdmin(admin.ModelAdmin):
+    fields = ["id", "project", "filename", "path"]
+    list_display = ("id", "project", "filename", "path")
 
-admin.site.register(OriginalImage)
+admin.site.register(OriginalImage, OriginalImageAdmin)
