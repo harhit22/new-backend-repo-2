@@ -6,4 +6,4 @@ class OriginalImageAdmin(admin.ModelAdmin):
     fields = ["id", "project", "filename", "path"]
     list_display = ("id", "project", "filename", "path")
 
-admin.site.register(OriginalImage, OriginalImageAdmin)
+admin.site.register(OriginalImage)

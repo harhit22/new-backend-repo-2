@@ -4,8 +4,8 @@ from django.http import JsonResponse
 import os
 import zipfile
 from django.shortcuts import get_object_or_404
-from .models import OriginalImage
 import shutil
+from trackAssginImagesAnnoatation.models import ImageAssignment
 
 
 def upload_dataset(request, project_id):
@@ -30,6 +30,24 @@ def upload_dataset(request, project_id):
 
             os.remove(zip_path)
             shutil.rmtree(temp_dir)
+
+            # Iterate through extracted files and create OriginalImage and ImageAssignment entries
+            for root, dirs, files in os.walk(extract_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, extract_path)
+
+                    original_image = OriginalImage.objects.create(
+                        project=project,
+                        filename=file,
+                        path=file_path,
+                    )
+
+                    ImageAssignment.objects.create(
+                        project=project,
+                        image=original_image,
+                        status='unassigned'
+                    )
 
             return JsonResponse({'success': True})
         except zipfile.BadZipFile:
@@ -57,7 +75,6 @@ def upload_dataset_extend(request, project_id):
         # Define the extraction path
         extract_path = f'static/media/datasets/{project_id}/'
 
-        # Ensure the extraction path exists
         os.makedirs(extract_path, exist_ok=True)
 
         try:

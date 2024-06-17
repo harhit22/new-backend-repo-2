@@ -27,13 +27,14 @@ urlpatterns = [
     path("project/upload/", include('UploadDataSetLableCraft.urls')),
     path("project/reterive/", include('reteriveDataset.urls')),
     path("project/label_data/", include('StoreLabelData.urls')),
-    path("project/yolov8", include('exportdatainyolov8.urls'))
+    path("project/yolov8", include('exportdatainyolov8.urls')),
+    path("trackannoated/", include('trackAssginImagesAnnoatation.urls')),
 ]
 
 urlpatterns += [
     path("categoryImage/", include('ReterviveCategoryData.urls')),
     path("categoryImageSave/", include('storeCategoryData.urls')),
-    path("trackannoated/", include('trackAssginImagesAnnoatation.urls'))
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

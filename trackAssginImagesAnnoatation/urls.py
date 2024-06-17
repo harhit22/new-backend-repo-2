@@ -1,7 +1,8 @@
+# trackAssginImagesAnnoatation/urls.py
 from django.urls import path
-from . import views
+from .views import NextImageView, UpdateImageStatusView
 
 urlpatterns = [
-    path('assign-image/<int:project_id>/', views.assign_image, name='assign_image'),
-    path('complete-image-labeling/<int:project_id>/<int:image_id>/', views.complete_image_labeling, name='complete_image_labeling'),
+    path('project/<int:project_id>/next-image/', NextImageView.as_view(), name='next-image'),
+    path('project/assignment/<int:assignment_id>/<str:status>/', UpdateImageStatusView.as_view(), name='update-image-status'),
 ]
