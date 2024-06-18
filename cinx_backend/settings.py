@@ -58,20 +58,20 @@ INSTALLED_APPS += [
     'exportdatainyolov8',
     'ReterviveCategoryData',
     'storeCategoryData',
-    'trackAssginImagesAnnoatation'
 ]
 
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    'corsheaders.middleware.CorsMiddleware',  # Place as early as possible
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
 ]
+
 
 ROOT_URLCONF = "cinx_backend.urls"
 
@@ -99,7 +99,7 @@ WSGI_APPLICATION = "cinx_backend.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'labels',
+        'NAME': 'waste_labels',
         'USER': 'root',
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
         'HOST': 'localhost',
@@ -209,5 +209,19 @@ JWT_CONF = {
 
 
 ## cors
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000', ]
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+    'Origin',
+    # add other headers if needed
+]
+
+
+
+CORS_EXPOSE_HEADERS = [
+    'Content-Length',
+    'X-Content-Type-Options',
+    # add other headers if needed
+]
+
+

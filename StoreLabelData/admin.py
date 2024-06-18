@@ -6,7 +6,7 @@ from .models import Image, Label
 
 
 class ImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'image_name', 'project', 'category', 'image_file')
+    list_display = ('id','original_image', 'image_name', 'project', 'category', 'image_file')
 
     def image_name(self, obj):
         return os.path.splitext(os.path.basename(obj.image_file.path))[0]

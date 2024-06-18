@@ -13,7 +13,7 @@ class ImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Image
-        fields = ['id', 'project', 'category', 'image_file', 'uploaded_at']
+        fields = '__all__'
 
 
 class ImageWithLabelsSerializer(serializers.ModelSerializer):

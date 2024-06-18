@@ -1,11 +1,16 @@
-from LabelCarftProjectSetup.models import Project
-from .models import OriginalImage
 from django.http import JsonResponse
 import os
-import zipfile
-from django.shortcuts import get_object_or_404
 import shutil
-from trackAssginImagesAnnoatation.models import ImageAssignment
+import zipfile
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
+from LabelCarftProjectSetup.models import Project
+from .models import OriginalImage
+from StoreLabelData.models import Image
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def upload_dataset(request, project_id):
@@ -31,21 +36,17 @@ def upload_dataset(request, project_id):
             os.remove(zip_path)
             shutil.rmtree(temp_dir)
 
-            # Iterate through extracted files and create OriginalImage and ImageAssignment entries
+            # Create OriginalImage entries
             for root, dirs, files in os.walk(extract_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     relative_path = os.path.relpath(file_path, extract_path)
 
-                    original_image = OriginalImage.objects.create(
+                    OriginalImage.objects.create(
                         project=project,
                         filename=file,
                         path=file_path,
-                    )
-
-                    ImageAssignment.objects.create(
-                        project=project,
-                        image=original_image,
+                        assigned_to=None,
                         status='unassigned'
                     )
 
@@ -61,37 +62,93 @@ def upload_dataset(request, project_id):
     return JsonResponse({'success': False, 'error': 'No file uploaded'})
 
 
-def upload_dataset_extend(request, project_id):
-    if request.method == 'POST' and request.FILES.get('dataset'):
+class NextImageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
-        dataset = request.FILES['dataset']
+        user = request.user
 
-        # Save the uploaded zip file
-        zip_path = 'uploaded_dataset.zip'
-        with open(zip_path, 'wb+') as destination:
-            for chunk in dataset.chunks():
-                destination.write(chunk)
+        # Get an unassigned OriginalImage for the project
+        unassigned_image = OriginalImage.objects.filter(
+            project=project,
+            status='unassigned'
+        ).first()
 
-        # Define the extraction path
-        extract_path = f'static/media/datasets/{project_id}/'
+        if unassigned_image:
+            # Update the OriginalImage status and assigned_to field
+            unassigned_image.status = 'in_progress'
+            unassigned_image.assigned_to = user
+            unassigned_image.save()
 
-        os.makedirs(extract_path, exist_ok=True)
+            # Prepare the response data with the image path
+            response_data = {
+                'image_id': unassigned_image.id,
+                'project_id': unassigned_image.project.id,
+                'filename': unassigned_image.filename,
+                'image_path': unassigned_image.path,
+                'user': unassigned_image.assigned_to.id,
+                'complete': unassigned_image.completed,
+                'status': unassigned_image.status
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': False, 'error': 'No unassigned images available'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+
+class CheckAlreadyLabelImage(APIView):
+
+    def get(self, request, original_image_id):
+        try:
+            original_image_id = int(original_image_id)
+            image = Image.objects.filter(original_image_id=original_image_id).first()
+            if image:
+                return Response(image.id, status=status.HTTP_200_OK)
+            else:
+                return Response(False, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response({"error": "Invalid original_image_id provided."}, status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist:
+            return Response(False, status=status.HTTP_200_OK)
+
+
+class UpdateImageStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, original_image_id):
+        user = request.user
+        original_image = get_object_or_404(OriginalImage, id=original_image_id)
+        print(original_image)
+
+        if original_image.assigned_to != user:
+            return Response({"error": "You are not authorized to update this image"}, status=status.HTTP_403_FORBIDDEN)
+
+        status_data = request.data.get('status', None)
+        print(status_data)
+        if status_data is None:
+            return Response({"error": "Status data is missing from the request"}, status=status.HTTP_400_BAD_REQUEST)
+
+        original_image.status = status_data
+        original_image.save()
+
+        return Response({"success": True, "status": original_image.status}, status=status.HTTP_200_OK)
+
+
+class CheckAndReassignStatus(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, original_image_id):
+        user = request.user
+        original_image = get_object_or_404(OriginalImage, id=original_image_id)
 
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                for member in zip_ref.namelist():
-                    member_path = os.path.join(extract_path, os.path.basename(member))
-                    if not os.path.isdir(member_path):
-                        with open(member_path, 'wb') as output_file:
-                            with zip_ref.open(member) as source_file:
-                                output_file.write(source_file.read())
+            image = Image.objects.get(original_image=original_image)
+            return Response({"success": False, "message": "Image already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        except Image.DoesNotExist:
+            original_image.status = 'unassigned'
+            original_image.save()
+            OriginalImage.objects.filter(id=original_image_id).update(assigned_to=None)
+            return Response({"success": True, "message": "Status updated to unassigned."}, status=status.HTTP_200_OK)
 
-            # Remove the uploaded zip file
-            os.remove(zip_path)
-
-            return JsonResponse({'success': True})
-        except zipfile.BadZipFile:
-            os.remove(zip_path)
-            return JsonResponse({'success': False, 'error': 'Invalid zip file'})
-
-    return JsonResponse({'success': False, 'error': 'No file uploaded'})
