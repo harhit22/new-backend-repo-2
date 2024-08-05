@@ -7,6 +7,7 @@ import os
 from django.http import JsonResponse
 import json
 
+
 class ImageViewSet(viewsets.ModelViewSet):
     queryset = Image.objects.all()
     serializer_class = ImageSerializer

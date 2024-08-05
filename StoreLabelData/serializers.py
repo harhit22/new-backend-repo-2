@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, Image, Label
+from .models import Project, Image, Label, CategoryImageStatus
 
 
 class LabelSerializer(serializers.ModelSerializer):
@@ -22,4 +22,12 @@ class ImageWithLabelsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
         fields = ['id', 'project', 'category', 'image_file', 'uploaded_at', 'labels']
+
+
+class CategoryImageStatusSerializer(serializers.ModelSerializer):
+    image = ImageSerializer()
+
+    class Meta:
+        model = CategoryImageStatus
+        fields = ['id', 'category', 'image', 'assigned_to', 'status']
 

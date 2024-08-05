@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
-from .views import NextImageView, CheckAlreadyLabelImage, UpdateImageStatusView, CheckAndReassignStatus
+from .views import NextImageView, CheckAlreadyLabelImage, UpdateImageStatusView, CheckAndReassignStatus,\
+    PreviousImageView
 from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
@@ -9,6 +10,9 @@ urlpatterns = [
     path('api/check_already_annotated_image/<int:original_image_id>/', CheckAlreadyLabelImage.as_view(),
          name='check_already_annotated_image'),
     path('update_image_status/<int:original_image_id>/', UpdateImageStatusView.as_view(), name='update_image_status'),
-    path('check_and_reassign_status/<int:original_image_id>/', CheckAndReassignStatus.as_view(), name='update_image_status'),
+    path('check_and_reassign_status/<int:original_image_id>/', CheckAndReassignStatus.as_view(),
+         name='update_image_status'),
+    path('previous_image/<int:user_id>/<int:current_image_id>/', PreviousImageView.as_view(), name='previous_image'),
+    path('previous_image/<int:user_id>/', PreviousImageView.as_view(), name='previous_image')
 
 ]

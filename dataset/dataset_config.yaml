@@ -1,0 +1,7 @@
+names:
+- Dirty
+- Fair
+nc: 2
+test: dataset\images\test
+train: dataset\images\train
+val: dataset\images\val

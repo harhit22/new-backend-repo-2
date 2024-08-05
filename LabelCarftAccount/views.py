@@ -33,20 +33,22 @@ class UserRegistrationAPIView(generics.CreateAPIView):
 
 
 class EmailVerificationView(GenericAPIView):
+    permission_classes = [AllowAny]
     def get(self, request, uidb64, token):
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
+            print(user)
 
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             user = None
-
+        print(user_tokenizer_generate.check_token(user, token))
         if user and user_tokenizer_generate.check_token(user, token):
             user.is_active = True
             user.save()
             return redirect('email_verification_success')
         else:
-            return redirect('email_verification_failed')
+            return
 
 
 class LoginView(GenericAPIView):

@@ -99,7 +99,7 @@ WSGI_APPLICATION = "cinx_backend.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'waste_labels',
+        'NAME': 'waste_labels_test',
         'USER': 'root',
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
         'HOST': 'localhost',

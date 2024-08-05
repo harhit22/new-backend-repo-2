@@ -91,6 +91,7 @@ class ProjectListView(APIView):
 
     def get(self, request):
         user = request.user
+        print(user)
         if not user.is_authenticated:
             return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -135,7 +136,6 @@ class GenericCategoryDataRetrieveView(APIView):
                 model =  globals()[model_name]
                 queryset = model.objects.filter(category=category)
                 serializer = globals()[f"{model_name}Serializer"](queryset, many=True)
-
 
 
             if serializer:
