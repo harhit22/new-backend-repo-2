@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Image, Label
-from .serializers import ImageSerializer, LabelSerializer, ImageSerializer
+from .serializers import ImageSerializer, LabelSerializer
 from rest_framework.views import APIView
 import os
 from django.http import JsonResponse

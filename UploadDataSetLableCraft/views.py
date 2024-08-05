@@ -21,73 +21,48 @@ from StoreLabelData.serializers import LabelSerializer
 def upload_dataset(request, project_id):
     if request.method == 'POST' and request.FILES.get('dataset'):
         project = get_object_or_404(Project, id=project_id)
-        uploaded_file = request.FILES['dataset']
+        dataset = request.FILES['dataset']
 
-        if uploaded_file.name.endswith('.zip'):
-            temp_dir = 'temp_extract_dir'
-            os.makedirs(temp_dir, exist_ok=True)
+        temp_dir = 'temp_extract_dir'
+        os.makedirs(temp_dir, exist_ok=True)
 
-            try:
-                zip_path = os.path.join(temp_dir, 'uploaded_dataset.zip')
-                with open(zip_path, 'wb+') as destination:
-                    for chunk in uploaded_file.chunks():
-                        destination.write(chunk)
+        try:
+            zip_path = os.path.join(temp_dir, 'uploaded_dataset.zip')
+            with open(zip_path, 'wb+') as destination:
+                for chunk in dataset.chunks():
+                    destination.write(chunk)
 
-                extract_path = f'static/media/datasets/{project_id}/'
-                os.makedirs(extract_path, exist_ok=True)
+            extract_path = f'static/media/datasets/{project_id}/'
+            os.makedirs(extract_path, exist_ok=True)
 
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_path)
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_path)
 
-                os.remove(zip_path)
-                shutil.rmtree(temp_dir)
+            os.remove(zip_path)
+            shutil.rmtree(temp_dir)
 
-                # Create OriginalImage entries
-                for root, dirs, files in os.walk(extract_path):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        relative_path = os.path.relpath(file_path, extract_path)
+            # Create OriginalImage entries
+            for root, dirs, files in os.walk(extract_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, extract_path)
 
-                        OriginalImage.objects.create(
-                            project=project,
-                            filename=file,
-                            path=relative_path,  # Store relative path
-                            assigned_to=None,
-                            status='unassigned'
-                        )
+                    OriginalImage.objects.create(
+                        project=project,
+                        filename=file,
+                        path=file_path,
+                        assigned_to=None,
+                        status='unassigned'
+                    )
 
-                return JsonResponse({'success': True})
-            except zipfile.BadZipFile:
-                os.remove(zip_path)
-                shutil.rmtree(temp_dir)
-                return JsonResponse({'success': False, 'error': 'Invalid zip file'})
-            except Exception as e:
-                shutil.rmtree(temp_dir)
-                return JsonResponse({'success': False, 'error': str(e)})
-
-        else:
-            try:
-                # Save single image
-                extract_path = f'static/media/datasets/{project_id}/'
-                os.makedirs(extract_path, exist_ok=True)
-                file_path = os.path.join(extract_path, uploaded_file.name)
-
-                with open(file_path, 'wb+') as destination:
-                    for chunk in uploaded_file.chunks():
-                        destination.write(chunk)
-
-                # Create OriginalImage entry
-                OriginalImage.objects.create(
-                    project=project,
-                    filename=uploaded_file.name,
-                    path=file_path,
-                    assigned_to=None,
-                    status='unassigned'
-                )
-
-                return JsonResponse({'success': True})
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': str(e)})
+            return JsonResponse({'success': True})
+        except zipfile.BadZipFile:
+            os.remove(zip_path)
+            shutil.rmtree(temp_dir)
+            return JsonResponse({'success': False, 'error': 'Invalid zip file'})
+        except Exception as e:
+            shutil.rmtree(temp_dir)
+            return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'No file uploaded'})
 

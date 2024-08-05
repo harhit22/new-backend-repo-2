@@ -27,13 +27,13 @@ class UserRegistrationAPIView(generics.CreateAPIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
     def perform_create(self, serializer):
         return serializer.save()
 
 
 class EmailVerificationView(GenericAPIView):
     permission_classes = [AllowAny]
+
     def get(self, request, uidb64, token):
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
@@ -77,7 +77,6 @@ class LoginView(GenericAPIView):
 
 class LogoutView(GenericAPIView):
     permission_classes = [IsAuthenticated]
-
 
     def post(self, request):
         # Instantiate JWTAuthentication to access the invalidate_token method
