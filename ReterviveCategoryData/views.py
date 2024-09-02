@@ -37,9 +37,15 @@ class AssignNextImageView(APIView):
 
         status_instance = CategoryImageStatus.objects.filter(
             category=category,
-            status='unlabeled',
-            assigned_to__isnull=True,
+            status='in_progress',
+            assigned_to=request.user,
         ).order_by('image__uploaded_at').first()
+        if status_instance is None:
+            status_instance = CategoryImageStatus.objects.filter(
+                category=category,
+                status='unlabeled',
+                assigned_to__isnull=True,
+            ).order_by('image__uploaded_at').first()
 
         if status_instance is None:
             unassigned_image = Image.objects.filter(

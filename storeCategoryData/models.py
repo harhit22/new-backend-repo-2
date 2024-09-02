@@ -2,6 +2,7 @@ from django.db import models
 from LabelCarftProjectSetup.models import Project, ProjectCategory
 from StoreLabelData.models import Image
 import os
+from django.contrib.auth.models import User
 
 
 def upload_to(instance, filename):
@@ -18,6 +19,8 @@ class CategoryImage(models.Model):
     image_width = models.FloatField(blank=True, null=True, default=640)
     image_height = models.FloatField(blank=True, null=True, default=640)
     updated_at = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='uploaded_labeled_images')
 
     def __str__(self):
         return f'{os.path.splitext(os.path.basename(self.image_file.path))[0]}'

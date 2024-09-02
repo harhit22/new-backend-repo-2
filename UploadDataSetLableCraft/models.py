@@ -1,7 +1,5 @@
-from django.db import models
 from LabelCarftProjectSetup.models import Project
 from django.contrib.auth.models import User
-
 from django.db import models
 from LabelCarftProjectSetup.models import Project
 from django.contrib.auth.models import User
@@ -24,4 +22,3 @@ class OriginalImage(models.Model):
 
     def __str__(self):
         return f'{self.filename}'
-

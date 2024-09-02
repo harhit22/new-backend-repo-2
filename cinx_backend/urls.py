@@ -35,4 +35,8 @@ urlpatterns += [
     path("categoryImageSave/", include('storeCategoryData.urls')),
 ]
 
+urlpatterns += [
+    path("lcadmin/", include('LabelCraftAdmin.urls')),
+]
+
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

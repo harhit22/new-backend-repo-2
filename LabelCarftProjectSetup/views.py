@@ -42,17 +42,17 @@ class SendInvitationView(APIView):
             return Response(status=status.HTTP_403_FORBIDDEN)
 
 
-        email = request.data.get('emails')
+        email = request.data.get('emails') or request.data.get('email')
         print(email)
         if not email:
             return Response({'email': 'This field is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        invitation = ProjectInvitation.objects.create(project=project, email=email[0])
+        invitation = ProjectInvitation.objects.create(project=project, email=email)
         send_mail(
             'Project Invitation',
             f'You have been invited to join the project "{project.name}". Use this link to accept: http://127.0.0.1:8000/project/invitations/{invitation.token}/accept/',
             'from@example.com',
-            [email[0]],
+            [email],
             fail_silently=False,
         )
 
@@ -80,7 +80,7 @@ class AcceptInvitationView(APIView):
             invitation.save()
             return Response({'detail': 'Invitation accepted.'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            # User not found, redirect to registration page
+            redirect("/register")
             pass
 
         return Response({'detail': 'Authentication required. Please register to accept the invitation.'}, status=status.HTTP_401_UNAUTHORIZED)

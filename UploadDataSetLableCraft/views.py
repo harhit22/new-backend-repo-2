@@ -11,11 +11,8 @@ from LabelCarftProjectSetup.models import Project
 from .models import OriginalImage
 from StoreLabelData.models import Image, Label
 from django.core.exceptions import ObjectDoesNotExist
-from StoreLabelData.serializers import ImageSerializer
+from StoreLabelData.serializers import ImageSerializer, LabelSerializer
 from django.contrib.auth.models import User
-from StoreLabelData.serializers import LabelSerializer
-
-
 
 
 def upload_dataset(request, project_id):
@@ -129,7 +126,7 @@ class UpdateImageStatusView(APIView):
     def patch(self, request, original_image_id):
         user = request.user
         original_image = get_object_or_404(OriginalImage, id=original_image_id)
-        print(original_image)
+        print(original_image, user)
 
         if original_image.assigned_to != user:
             return Response({"error": "You are not authorized to update this image"}, status=status.HTTP_403_FORBIDDEN)

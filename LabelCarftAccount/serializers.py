@@ -6,6 +6,7 @@ class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     password1 = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
@@ -22,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('This email is already in use')
 
         user = User.objects.create_user(**validated_data, password=password1)
-        user.is_active = False
+        user.is_active = True
         user.save()
 
         return user

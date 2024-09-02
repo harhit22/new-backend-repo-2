@@ -3,7 +3,7 @@ from .models import CategoryImage, ImageLabel
 
 
 class CategoryImageAdmin(admin.ModelAdmin):
-    list_display = ['id', 'project', 'category', 'image_file', 'image', 'image_width', 'image_height', 'updated_at']
+    list_display = ['id', 'project', 'category', 'image_file', 'image', 'image_width', 'image_height', 'updated_at', 'uploaded_by']
 
 
 class ImageLabelAdmin(admin.ModelAdmin):
