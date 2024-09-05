@@ -13,6 +13,8 @@ from StoreLabelData.models import Image, Label
 from django.core.exceptions import ObjectDoesNotExist
 from StoreLabelData.serializers import ImageSerializer, LabelSerializer
 from django.contrib.auth.models import User
+from cinx_backend.firebase import bucket
+
 
 
 def upload_dataset(request, project_id):
@@ -29,28 +31,37 @@ def upload_dataset(request, project_id):
                 for chunk in dataset.chunks():
                     destination.write(chunk)
 
-            extract_path = f'static/media/datasets/{project_id}/'
+            extract_path = f'{temp_dir}/extracted/'
             os.makedirs(extract_path, exist_ok=True)
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
 
             os.remove(zip_path)
-            shutil.rmtree(temp_dir)
 
-            # Create OriginalImage entries
+            # Create OriginalImage entries and upload to Firebase
             for root, dirs, files in os.walk(extract_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     relative_path = os.path.relpath(file_path, extract_path)
 
+                    # Upload file to Firebase Storage
+                    blob = bucket.blob(f'projects/{project_id}/{file}')
+                    blob.upload_from_filename(file_path)
+                    blob.make_public()
+                    firebase_url = blob.public_url
+
+                    # Save the OriginalImage record with Firebase URL
                     OriginalImage.objects.create(
                         project=project,
                         filename=file,
-                        path=file_path,
+                        firebase_url=firebase_url,
                         assigned_to=None,
                         status='unassigned'
                     )
+
+            # Clean up temporary files
+            shutil.rmtree(temp_dir)
 
             return JsonResponse({'success': True})
         except zipfile.BadZipFile:
@@ -92,7 +103,7 @@ class NextImageView(APIView):
                 'image_id': unassigned_image.id,
                 'project_id': unassigned_image.project.id,
                 'filename': unassigned_image.filename,
-                'image_path': unassigned_image.path,
+                'image_path': unassigned_image.firebase_url,
                 'user': unassigned_image.assigned_to.id,
                 'complete': unassigned_image.completed,
                 'status': unassigned_image.status
@@ -151,6 +162,7 @@ class CheckAndReassignStatus(APIView):
 
         try:
             image = Image.objects.get(original_image=original_image)
+            print(image, 'imageeeeee')
             return Response({"success": False, "message": "Image already exists."}, status=status.HTTP_226_IM_USED)
         except Image.DoesNotExist:
             original_image.status = 'unassigned'

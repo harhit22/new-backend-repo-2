@@ -52,7 +52,8 @@ class Command(BaseCommand):
         # Function to process and save images and labels
         def process_images(images, images_dir, labels_dir):
             for cat_image in images:
-                image_name = os.path.basename(cat_image.image_file.name)
+                print(cat_image)
+                image_name = os.path.basename(cat_image.firebase_url.name)
                 image_path = images_dir / image_name
 
                 # Copy image file to the dataset directory

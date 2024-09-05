@@ -13,13 +13,13 @@ class Image(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='images')
 
     original_image = models.ForeignKey(OriginalImage, on_delete=models.CASCADE, related_name='OriginalImage')
-    image_file = models.ImageField(upload_to=upload_to)
+    firebase_url = models.URLField(max_length=500, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='uploaded_images')
 
     def __str__(self):
-        return f'{ os.path.splitext(os.path.basename(self.image_file.path))[0]}'
+        return f'{self.firebase_url}'
 
 
 class Label(models.Model):
@@ -32,7 +32,7 @@ class Label(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'{self.label} { os.path.splitext(os.path.basename(self.image.image_file.path))[0]}'
+        return f'{self.label} '
 
 
 class CategoryImageStatus(models.Model):

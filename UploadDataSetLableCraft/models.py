@@ -14,7 +14,7 @@ class OriginalImage(models.Model):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     filename = models.CharField(max_length=255)
-    path = models.CharField(max_length=255)
+    firebase_url = models.URLField(max_length=500, blank=True, null=True)
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_at = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)

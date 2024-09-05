@@ -40,6 +40,7 @@ class AssignNextImageView(APIView):
             status='in_progress',
             assigned_to=request.user,
         ).order_by('image__uploaded_at').first()
+        print(status_instance)
         if status_instance is None:
             status_instance = CategoryImageStatus.objects.filter(
                 category=category,
@@ -100,9 +101,12 @@ class CheckAndReassignCatImage(APIView):
         image = get_object_or_404(Image, id=image_id)
 
         try:
+            print('hello')
             category_image = CategoryImage.objects.get(image=image)
+            print(category_image)
             return Response({"success": False, "message": "Image already exists."}, status=status.HTTP_226_IM_USED)
         except CategoryImage.DoesNotExist:
+            print('hello')
             category_image_status = get_object_or_404(CategoryImageStatus, image=image)
             category_image_status.status = 'unlabeled'
             category_image_status.assigned_to = None
