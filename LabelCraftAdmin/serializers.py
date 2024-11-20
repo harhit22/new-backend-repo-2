@@ -7,7 +7,7 @@ from StoreLabelData.models import Image, Label
 class OriginalImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = OriginalImage
-        fields = ['id', 'filename', 'path', 'status', 'assigned_to', 'assigned_at', 'completed']
+        fields = ['id', 'filename', 'firebase_url', 'status', 'assigned_to', 'assigned_at', 'completed']
 
 
 # -----------------------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ class AnnotatedImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Image
-        fields = ['id', 'project', 'original_image', 'image_file', 'uploaded_at', 'uploaded_by', 'labels']
+        fields = ['id', 'project', 'original_image','firebase_url', 'uploaded_at', 'uploaded_by', 'labels', "image_width", "image_height"]
 
 
 # -----------------------------------------------------------------------------------------------------
@@ -36,8 +36,9 @@ class ImageLabelSerializer(serializers.ModelSerializer):
 class LabeledImageSerializer(serializers.ModelSerializer):
     uploaded_by = serializers.StringRelatedField()
     labels = ImageLabelSerializer(many=True, source='category_image_labels')
+    category_name = serializers.CharField(source='category', read_only=True)
 
     class Meta:
         model = CategoryImage
-        fields = ['id', 'project', 'category', 'image_file', 'image_width', 'image_height', 'updated_at', 'uploaded_by',
-                  'labels']
+        fields = ['id', 'project', 'category', 'category_name', 'firebase_url', 'image_width', 'image_height', 'updated_at', 'uploaded_by', 'labels']
+

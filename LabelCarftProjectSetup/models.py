@@ -2,11 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.crypto import get_random_string
-
+import uuid
 
 def dataset_upload_path(instance, filename):
     return f"datasets/{instance.id}/{filename}"
 
+def generate_unique_token():
+    return uuid.uuid4().hex
 
 class Project(models.Model):
     name = models.CharField(max_length=255)
@@ -23,7 +25,7 @@ class Project(models.Model):
 class ProjectInvitation(models.Model):
     project = models.ForeignKey(Project, related_name='invitations', on_delete=models.CASCADE)
     email = models.EmailField()
-    token = models.CharField(max_length=50, unique=True, default=get_random_string(length=20))
+    token = models.CharField(max_length=50, unique=True, default=generate_unique_token)
     created_at = models.DateTimeField(default=timezone.now)
     accepted = models.BooleanField(default=False)
     registered_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)

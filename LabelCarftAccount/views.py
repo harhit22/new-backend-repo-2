@@ -12,7 +12,11 @@ from rest_framework import views, permissions, status
 from .backend import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
-
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.urls import reverse
+from .password_reset import send_password_reset_email
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -84,3 +88,48 @@ class LogoutView(GenericAPIView):
         jwt_auth.invalidate_token(request)
 
         return Response({"detail": "Successfully logged out."})
+
+
+
+class PasswordResetRequestView(generics.GenericAPIView):
+    serializer_class = PasswordResetRequestSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data.get('email')
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        token = user_tokenizer_generate.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        reset_url = f"http://34.68.171.158/reset-password/{uid}/{token}/"
+        send_password_reset_email(user, reset_url)
+
+        return Response({"detail": "Password reset email has been sent."}, status=status.HTTP_200_OK)
+
+
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
+
+    def post(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and user_tokenizer_generate.check_token(user, token):
+            new_password = request.data.get('new_password')
+            user.set_password(new_password)
+            user.save()
+            return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "Invalid token or user."}, status=status.HTTP_400_BAD_REQUEST)

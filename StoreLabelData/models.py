@@ -14,6 +14,8 @@ class Image(models.Model):
 
     original_image = models.ForeignKey(OriginalImage, on_delete=models.CASCADE, related_name='OriginalImage')
     firebase_url = models.URLField(max_length=500, blank=True, null=True)
+    image_width = models.FloatField(blank=True, null=True, default=540)
+    image_height = models.FloatField(blank=True, null=True, default=540)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='uploaded_images')
@@ -48,3 +50,4 @@ class CategoryImageStatus(models.Model):
 
     def __str__(self):
         return f'{self.image} - {self.category} - {self.status}'
+

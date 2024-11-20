@@ -6,7 +6,7 @@ from .models import Image, Label, CategoryImageStatus
 
 
 class ImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'original_image', 'project', 'firebase_url', 'uploaded_by')
+    list_display = ('id', 'original_image', 'project', 'firebase_url', 'uploaded_by',  "image_width", "image_height")
 
 
 class LabelAdmin(admin.ModelAdmin):
@@ -20,3 +20,4 @@ class CategoryImageStatusAdmin(admin.ModelAdmin):
 admin.site.register(Image, ImageAdmin)
 admin.site.register(Label, LabelAdmin)
 admin.site.register(CategoryImageStatus, CategoryImageStatusAdmin)
+

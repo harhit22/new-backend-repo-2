@@ -11,7 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 
 
 class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 10  # Default page size
+    page_size = 16  # Default page size
     page_size_query_param = 'page_size'
     max_page_size = 100  # Maximum page size a user can request
 
@@ -96,10 +96,28 @@ class AnnotatedImageListView(generics.ListAPIView):
             return request.build_absolute_uri(f'?page={previous_page_number}')
         return None
 
+
 class LabeledImageListView(generics.ListAPIView):
     queryset = CategoryImage.objects.all()
     serializer_class = LabeledImageSerializer
     pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        """
+        Override get_queryset to filter by uploaded_by and category_name if provided in query params.
+        """
+        queryset = super().get_queryset()
+
+        uploaded_by = self.request.query_params.get('uploaded_by', None)
+        category_name = self.request.query_params.get('category_name', None)
+
+        if uploaded_by:
+            queryset = queryset.filter(uploaded_by__username=uploaded_by)
+
+        if category_name:
+            queryset = queryset.filter(category__category=category_name)
+
+        return queryset
 
     def get_paginated_response(self, data):
         paginator = self.paginator

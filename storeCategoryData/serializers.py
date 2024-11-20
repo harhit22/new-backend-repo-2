@@ -20,11 +20,20 @@ class CategoryImageSerializer(serializers.ModelSerializer):
         category_name = validated_data.get('category', None).category if validated_data.get('category') else 'unknown'
         filename = image_file.name
 
-        # Upload the image to Firebase Storage
-        blob = storage.bucket().blob(f'projects/{project.id}/annotated_images/{category_name}/{filename}')
-        blob.upload_from_file(image_file)
-        firebase_url = blob.public_url
-        blob.make_public()
+        # Check for the image in the root folder
+        root_blob_path = f'projects/{project.id}/{filename}'
+        root_blob = storage.bucket().blob(root_blob_path)
+
+        if root_blob.exists():
+            # Image already exists in the root folder, reuse its URL
+            firebase_url = root_blob.public_url
+        else:
+            # Upload the image to Firebase Storage under the category-specific folder
+            blob_path = f'projects/{project.id}/annotated_images/{category_name}/{filename}'
+            blob = storage.bucket().blob(blob_path)
+            blob.upload_from_file(image_file)
+            blob.make_public()
+            firebase_url = blob.public_url
 
         # Create the CategoryImage instance
         validated_data['firebase_url'] = firebase_url

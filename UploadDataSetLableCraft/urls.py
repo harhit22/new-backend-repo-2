@@ -6,6 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
     path('api/<int:project_id>/upload_dataset/',  csrf_exempt(views.upload_dataset), name='upload_dataset'),
+    path('api/<int:project_id>/upload_video/',  csrf_exempt(views.upload_video), name='upload_video'),
+    path('api/<int:project_id>/upload_image/',  csrf_exempt(views.upload_image), name='upload_image'),
     path('api/<int:project_id>/next-image/',  NextImageView.as_view(), name='upload_dataset'),
     path('api/check_already_annotated_image/<int:original_image_id>/', CheckAlreadyLabelImage.as_view(),
          name='check_already_annotated_image'),

@@ -1,0 +1,190 @@
+from django.http import JsonResponse
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from LabelCarftProjectSetup.models import Material, Toxicity, Condition, Grade, WasteType
+from storeCategoryData.models import CategoryImage, ImageLabel
+import yaml
+import random
+import requests
+import os
+from pathlib import Path
+import zipfile
+from django.http import FileResponse
+from django.conf import settings
+import json
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DatasetDownloadView(View):
+    def post(self, request, *args, **kwargs):
+        # Get category parameters from the request
+        try:
+            body = json.loads(request.body)
+            print(body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        category_id = body.get('category_id')
+        category_name = body.get('category_name')
+        train_images_num = body.get('train_count')  # Expecting a direct count
+        val_images_num = body.get('val_count')      # Expecting a direct count
+        test_images_num = body.get('test_count')     # Expecting a direct count
+        print(train_images_num, val_images_num, test_images_num)
+
+        # Map category names to their corresponding models
+        model_mapping = {
+            'Material': Material,
+            'Toxicity': Toxicity,
+            'Condition': Condition,
+            'Grade': Grade,
+            'WasteType': WasteType,
+        }
+
+        model_class = model_mapping.get(category_name)
+
+        if not model_class:
+            return JsonResponse({'error': 'Invalid category name'}, status=400)
+
+        # Fetch the data from the database
+        data = list(model_class.objects.filter(category_id=category_id).values('id', 'name'))
+
+        # Create YOLO dataset directories
+        base_dir = Path('dataset')
+        images_dir = base_dir / 'images'
+        labels_dir = base_dir / 'labels'
+        train_images_dir = images_dir / 'train'
+        val_images_dir = images_dir / 'val'
+        test_images_dir = images_dir / 'test'
+        train_labels_dir = labels_dir / 'train'
+        val_labels_dir = labels_dir / 'val'
+        test_labels_dir = labels_dir / 'test'
+
+        for directory in [base_dir, images_dir, labels_dir, train_images_dir, val_images_dir, test_images_dir,
+                          train_labels_dir, val_labels_dir, test_labels_dir]:
+            os.makedirs(directory, exist_ok=True)
+
+        self.clear_directory(train_images_dir)
+        self.clear_directory(val_images_dir)
+        self.clear_directory(test_images_dir)
+        self.clear_directory(train_labels_dir)
+        self.clear_directory(val_labels_dir)
+        self.clear_directory(test_labels_dir)
+
+        self.create_yolo_dataset(base_dir, train_images_dir, train_labels_dir,
+                                  val_images_dir, val_labels_dir,
+                                  test_images_dir, test_labels_dir,
+                                  category_name, category_id, images_dir, labels_dir,
+                                  train_images_num, val_images_num, test_images_num)
+
+        zip_file_path = base_dir / 'yolo_dataset.zip'
+
+        # Return the ZIP file as a downloadable response
+        response = FileResponse(open(zip_file_path, 'rb'), as_attachment=True)
+        response['Content-Disposition'] = f'attachment; filename="{zip_file_path.name}"'
+        return response
+
+    def clear_directory(self, directory):
+        """Clear all files in a directory."""
+        for file in directory.iterdir():
+            if file.is_file():
+                file.unlink()
+
+    def create_yolo_dataset(self, base_dir, train_images_dir, train_labels_dir,
+                            val_images_dir, val_labels_dir,
+                            test_images_dir, test_labels_dir,
+                            category_name, category_id, images_dir, labels_dir,
+                            train_images_num, val_images_num, test_images_num):
+        # Fetch the class names dynamically based on the category
+        model_mapping = {
+            'Material': Material,
+            'Toxicity': Toxicity,
+            'Condition': Condition,
+            'Grade': Grade,
+            'WasteType': WasteType,
+        }
+
+        model_class = model_mapping.get(category_name)
+
+        if not model_class:
+            print('Invalid category name')
+            return
+
+        # Get class names from the database
+        classes = list(model_class.objects.filter(category_id=category_id).values_list('name', flat=True))
+
+        # Get data from the database
+        category_images = list(CategoryImage.objects.filter(category_id=category_id))
+        print('Total images:', len(category_images))
+
+        # Check if there are enough images for the specified counts
+        total_images = len(category_images)
+        if total_images < (train_images_num + val_images_num + test_images_num):
+            return JsonResponse({'error': 'Not enough images for the specified splits'}, status=400)
+
+ huffle and split the data based on provided counts
+        import random
+        random.shuffle(category_images)
+
+        train_images = category_images[:train_images_num]  # Images for training
+        val_images = category_images[train_images_num:train_images_num + val_images_num]  # Images for validation
+        test_images = category_images[train_images_num + val_images_num:train_images_num + val_images_num + test_images_num]  # Images for testing
+
+        # Function to process and save images and labels
+        def process_images(images, images_dir, labels_dir):
+            image_counter = 0  # Initialize a counter for unique image naming
+
+           
+
+        # Process images for each dataset without reusing images
+        process_images(train_images, train_images_dir, train_labels_dir)
+        process_images(val_images, val_images_dir, val_labels_dir)
+        process_images(test_images, test_images_dir, test_labels_dir)
+
+        # YAML configuration for YOLOv8
+        yaml_content = {
+            'train': str(train_images_dir),
+            'val': str(val_images_dir),
+            'test': str(test_images_dir),
+            'nc': len(classes),
+            'names': classes,
+        }
+
+        yaml_file_path = os.path.join(base_dir, 'dataset_config.yaml')
+        with open(yaml_file_path, 'w') as yaml_file:
+            yaml.dump(yaml_content, yaml_file)
+
+        print('Successfully generated YOLOv8 dataset and configuration file')
+
+        # Create the ZIP file and include the YAML file
+        zip_file_path = os.path.join(base_dir, 'yolo_dataset.zip')
+        with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add dataset images and labels
+            for folder in [train_images_dir, train_labels_dir, val_images_dir, val_labels_dir, test_images_dir,
+                           test_labels_dir]:
+                for root, _, files in os.walk(folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        zipf.write(file_path, os.path.relpath(file_path, base_dir))
+
+            # Add the YAML file to the ZIP
+            zipf.write(yaml_file_path, os.path.relpath(yaml_file_path, base_dir))
+
+        print('Successfully created ZIP file for YOLOv8 dataset:', zip_file_path)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TotalImagesByCategoryView(View):
+    def get(self, request, *args, **kwargs):
+        # Get the category ID from the request
+        category_id = request.GET.get('category_id')
+
+        # Check if category_id is provided
+        if not category_id:
+            return JsonResponse({'error': 'category_id is required'}, status=400)
+
+        # Get the total number of images for the given category ID
+        total_images = CategoryImage.objects.filter(category_id=category_id).count()
+
+        # Return the total number of images as JSON response
+        return JsonResponse({'category_id': category_id, 'total_images': total_images})

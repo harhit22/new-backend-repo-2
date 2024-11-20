@@ -11,7 +11,7 @@ from django.shortcuts import redirect
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-
+import uuid
 from .serializers import (ProjectCategorySerializer,
     MaterialSerializer,
     GradeSerializer,
@@ -42,19 +42,27 @@ class SendInvitationView(APIView):
             return Response(status=status.HTTP_403_FORBIDDEN)
 
 
-        email = request.data.get('emails') or request.data.get('email')
-        print(email)
-        if not email:
+        email_list = request.data.get('emails') or request.data.get('email')
+        print(email_list)
+        if not email_list:
             return Response({'email': 'This field is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        invitation = ProjectInvitation.objects.create(project=project, email=email)
-        send_mail(
-            'Project Invitation',
-            f'You have been invited to join the project "{project.name}". Use this link to accept: http://127.0.0.1:8000/project/invitations/{invitation.token}/accept/',
-            'from@example.com',
-            [email],
-            fail_silently=False,
-        )
+        if isinstance(email_list, str):
+            email_list = [email_list]
+
+        for email in email_list:
+            token = uuid.uuid4().hex
+            while ProjectInvitation.objects.filter(token=token).exists():
+                token = uuid.uuid4().hex
+
+            invitation = ProjectInvitation.objects.create(project=project, email=email, token=token)
+            send_mail(
+                'Project Invitation',
+                f'You have been invited to join the project "{project.name}". Use this link to accept: http://34.68.171.158/project/invitations/{invitation.token}/accept/',
+                'from@example.com',
+                [email],
+                fail_silently=False,
+            )
 
         return Response(ProjectInvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
 
@@ -69,7 +77,8 @@ class AcceptInvitationView(APIView):
         invitation = get_object_or_404(ProjectInvitation, token=token)
 
         if invitation.accepted:
-            return Response({'detail': 'Invitation already accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+            frontend_url = f"http://{request.get_host().split(':')[0]}"
+            return redirect(f"{frontend_url}/login?message=login")
 
         email = invitation.email
         try:
@@ -78,9 +87,12 @@ class AcceptInvitationView(APIView):
             invitation.accepted = True
             invitation.registered_user = user
             invitation.save()
+            frontend_url = f"http://{request.get_host().split(':')[0]}"
+            return redirect(f"{frontend_url}/login?message=login")
             return Response({'detail': 'Invitation accepted.'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            redirect("/register")
+            frontend_url = f"http://{request.get_host().split(':')[0]}"
+            return redirect(f"{frontend_url}/register?message=register")
             pass
 
         return Response({'detail': 'Authentication required. Please register to accept the invitation.'}, status=status.HTTP_401_UNAUTHORIZED)

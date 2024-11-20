@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure--$(n#78u+yts-mi4p49@h6$-r#cs1oc+2&1^)wcrk@xnz7+^t=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.68.171.158']
 
 
 # Application definition
@@ -72,6 +72,25 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# settings.py
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/django/django.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 ROOT_URLCONF = "cinx_backend.urls"
 
@@ -101,7 +120,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'waste_labels_test',
         'USER': 'root',
-        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
+        'PASSWORD': "mansi@123",
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -142,6 +161,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [ BASE_DIR / 'static']
+STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), "static")
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'static/media'
@@ -164,9 +184,9 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = 'True'
 
 
-EMAIL_HOST_USER = 'harshitshrimalee22@gmail.com'
+EMAIL_HOST_USER = 'harshitshrimalee.wevois@gmail.com'
 
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_PASSWORD = 'hplc zbsf wrbv bvdk'
 
 
 # ----------------------rest frame work related setting-------------------------- #
@@ -188,6 +208,7 @@ JWT_SECRET_KEY = 'JWT_SECRET_KEY'
 
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
+    'http://34.68.171.158'
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -200,7 +221,7 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000','http://34.68.171.158']
 
 
 # settings.py
@@ -227,3 +248,9 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_IMPORTS = ('exportdatainyolov8.tasks',)
