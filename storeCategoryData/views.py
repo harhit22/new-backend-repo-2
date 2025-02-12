@@ -19,10 +19,39 @@ class CategoryImageViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+
 class ImageLabelViewSet(viewsets.ModelViewSet):
     queryset = ImageLabel.objects.all()
     serializer_class = ImageLabelSerializer
 
+    def create(self, request, *args, **kwargs):
+        print("Request data:", request.data)
+
+        # Check if the 'labels' key exists in the request data
+        if 'labels' in request.data:
+            labels_data = request.data['labels']
+            labels = []
+
+            for label_data in labels_data:
+                serializer = self.get_serializer(data=label_data)
+
+                if serializer.is_valid():
+                    serializer.save()  # Save the label data to the database
+                    labels.append(serializer.data)
+                else:
+                    print("Validation failed for label:", label_data)
+                    print(serializer.errors)
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(labels, status=status.HTTP_201_CREATED)
+
+        # If the 'labels' field is not present, handle it as a single label
+        else:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class CategoryImageLabelDataView(APIView):
     def get(self, request, category_image_id):

@@ -8,18 +8,25 @@ from rest_framework.response import Response
 from UploadDataSetLableCraft.models import OriginalImage
 from .serializers import OriginalImageSerializer
 from rest_framework.pagination import PageNumberPagination
+from django.db.models import F
 
 
 class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 16  # Default page size
+    page_size = 12  # Default page size
     page_size_query_param = 'page_size'
     max_page_size = 100  # Maximum page size a user can request
 
 
 class OriginalImageListView(generics.ListAPIView):
-    queryset = OriginalImage.objects.all()
     serializer_class = OriginalImageSerializer
     pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        """
+        Override get_queryset to filter images by project ID.
+        """
+        project_id = self.kwargs.get('project_id')  # Retrieve project_id from the URL
+        return OriginalImage.objects.filter(project_id=project_id)
 
 
 
@@ -54,15 +61,23 @@ class AnnotatedImageListView(generics.ListAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        project_id = self.kwargs.get('project_id')
+        queryset = Image.objects.filter(project_id=project_id)
         uploaded_by = self.request.query_params.get('uploaded_by', None)
+        updated_at = self.request.query_params.get('date', None)
+        image_name = self.request.query_params.get('image_name', None)
+        print(image_name)
+        if updated_at:
+            queryset = queryset.filter(uploaded_at__date=updated_at)
+        print(updated_at)
         if uploaded_by:
             queryset = queryset.filter(uploaded_by__username=uploaded_by)
+        if image_name:
+            queryset = queryset.filter(firebase_url__endswith=image_name)
         return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -77,6 +92,7 @@ class AnnotatedImageListView(generics.ListAPIView):
         page = paginator.page
 
         return Response({
+
             'count': paginator.page.paginator.count,
             'next': self.get_next_page_link(request, page),
             'previous': self.get_previous_page_link(request, page),
@@ -98,24 +114,35 @@ class AnnotatedImageListView(generics.ListAPIView):
 
 
 class LabeledImageListView(generics.ListAPIView):
-    queryset = CategoryImage.objects.all()
+
     serializer_class = LabeledImageSerializer
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         """
         Override get_queryset to filter by uploaded_by and category_name if provided in query params.
+
         """
-        queryset = super().get_queryset()
+        project_id = self.kwargs.get('project_id')
+        queryset = CategoryImage.objects.filter(project_id=project_id).order_by('-id')
+        queryset = queryset.annotate(
+            uploaded_by_name=F('image__uploaded_by__username')
+        )
 
         uploaded_by = self.request.query_params.get('uploaded_by', None)
         category_name = self.request.query_params.get('category_name', None)
+        updated_at = self.request.query_params.get('date', None)
+        print(updated_at)
 
         if uploaded_by:
             queryset = queryset.filter(uploaded_by__username=uploaded_by)
 
         if category_name:
             queryset = queryset.filter(category__category=category_name)
+
+        if updated_at:
+            queryset = queryset.filter(updated_at__date=updated_at)
+
 
         return queryset
 

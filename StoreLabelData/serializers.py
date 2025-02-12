@@ -6,16 +6,17 @@ from cinx_backend.firebase import storage
 class LabelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Label
-        fields = ['image', 'label', 'x', 'y', 'width', 'height']
+        fields = ['image', 'label', 'x', 'y', 'width', 'height', 'label_id']
 
 
 class ImageSerializer(serializers.ModelSerializer):
     project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all())
     image_file = serializers.CharField(write_only=True)
+    uploaded_by_name = serializers.CharField(source="uploaded_by.username", read_only=True)
 
     class Meta:
         model = Image
-        fields = ['id', 'project', 'original_image', 'firebase_url', 'image_file','uploaded_at', 'uploaded_by', "image_width", "image_height"]
+        fields = ['id', 'project', 'original_image', 'firebase_url', 'image_file','uploaded_at', 'uploaded_by', "image_width", "image_height", "uploaded_by_name"]
 
     def create(self, validated_data):
         print(validated_data)
@@ -63,3 +64,11 @@ class CategoryImageStatusSerializer(serializers.ModelSerializer):
         model = CategoryImageStatus
         fields = ['id', 'category', 'image', 'assigned_to', 'status']
 
+    def validate(self, data):
+        # Check if a status instance already exists with the same category and image
+        if CategoryImageStatus.objects.filter(
+                category=data['category'],
+                image=data['image']
+        ).exists():
+            raise serializers.ValidationError("This image is already assigned to the given category.")
+        return data

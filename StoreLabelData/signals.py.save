@@ -1,0 +1,51 @@
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
+from .models import Image, @receiver(pre_save, sender=Label)
+def prevent_duplicate_labels(sender, instance, **kwargs):
+    """
+    Signal to prevent saving duplicate labels.
+    """
+    # Check for duplicates
+    if Label.objects.filter(
+        image=instance.image,
+        x=instance.x,
+        y=instance.y,
+        width=instance.width,
+        height=instance.height,
+    ).exists():
+        raise ValidationError("A label with these attributes already exists.")
+from django.core.exceptions import ValidationError
+import time
+
+
+@receiver(post_save, sender=Image)
+def handle_duplicate_images(sender, instance, **kwargs):
+    """
+    Signal to remove duplicates after saving an image.
+    """
+    # Check for duplicates with the same firebase_url and project
+    duplicates = Image.objects.filter(
+        firebase_url=instance.firebase_url,
+        project=instance.project,
+    ).exclude(id=instance.id)
+
+    # If duplicates are found, delete the most recent one (keep the oldest)
+    if duplicates.exists():
+        # Sort duplicates by ID and delete the latest
+        duplicates.latest('id').delete()
+
+
+@receiver(pre_save, sender=Label)
+def prevent_duplicate_labels(sender, instance, **kwargs):
+    """
+    Signal to prevent saving duplicate labels.
+    """
+    # Check for duplicates
+    if Label.objects.filter(
+        image=instance.image,
+        x=instance.x,
+        y=instance.y,
+        width=instance.width,
+        height=instance.height,
+    ).exists():
+        raise ValidationError("A label with these attributes already exists.")

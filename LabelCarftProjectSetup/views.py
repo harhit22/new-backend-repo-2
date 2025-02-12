@@ -58,7 +58,7 @@ class SendInvitationView(APIView):
             invitation = ProjectInvitation.objects.create(project=project, email=email, token=token)
             send_mail(
                 'Project Invitation',
-                f'You have been invited to join the project "{project.name}". Use this link to accept: http://34.68.171.158/project/invitations/{invitation.token}/accept/',
+                f'You have been invited to join the project "{project.name}". Use this link to accept: http://104.154.64.122/project/invitations/{invitation.token}/accept/',
                 'from@example.com',
                 [email],
                 fail_silently=False,

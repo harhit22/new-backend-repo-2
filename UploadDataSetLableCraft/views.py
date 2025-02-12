@@ -20,6 +20,10 @@ import time
 import uuid
 import cv2
 from django.db import transaction
+from django.http import StreamingHttpResponse
+import threading
+import imghdr
+from PIL import Image as IMG
 
 
 def upload_dataset(request, project_id):
@@ -85,6 +89,7 @@ def upload_image(request, project_id):
 
     return JsonResponse({'success': False, 'error': 'No image file uploaded'})
 
+
 def upload_video(request, project_id):
     if request.method == 'POST' and request.FILES.get('video'):
         try:
@@ -112,6 +117,72 @@ def upload_video(request, project_id):
     return JsonResponse({'success': False, 'error': 'No video file uploaded'})
 
 
+def upload_image_by_feed(request, project_id):
+    if request.method == 'POST' and request.FILES.get('image'):
+        try:
+            project = get_object_or_404(Project, id=project_id)
+            image = request.FILES['image']
+
+            # Validate file type
+            valid_formats = ['jpeg', 'png']
+            file_type = imghdr.what(image)  # Check the image format
+
+            temp_dir = 'temp_image_dir'
+            os.makedirs(temp_dir, exist_ok=True)
+
+            # Generate unique image name
+            original_extension = image.name.split('.')[-1]
+            image_name = f"{uuid.uuid4()}_{int(time.time())}.{original_extension}.jpg"
+            temp_path = os.path.join(temp_dir, image_name)
+
+            # Save the uploaded image temporarily
+            with open(temp_path, 'wb+') as temp_file:
+                for chunk in image.chunks():
+                    temp_file.write(chunk)
+
+            # Convert the image if the format is not valid
+            if file_type not in valid_formats:
+                converted_image_name = image_name.replace(original_extension, 'jpg')
+                converted_image_path = os.path.join(temp_dir, converted_image_name)
+
+                # Open and convert the image
+                with IMG.open(temp_path) as img:  # Using IMG instead of Image
+                    rgb_img = img.convert('RGB')  # Ensure the image is in RGB mode
+                    rgb_img.save(converted_image_path, format='JPEG')
+
+                os.remove(temp_path)  # Remove the original file
+                image_path = converted_image_path  # Use the converted image
+                image_name = converted_image_name  # Update the image name
+            else:
+                image_path = temp_path
+
+            # Upload image to Firebase storage
+            blob = storage.bucket().blob(f'projects/{project_id}/{image_name}')
+            blob.upload_from_filename(image_path)
+            blob.make_public()
+            firebase_url = blob.public_url
+
+            # Save image details in the database
+            OriginalImage.objects.create(
+                project=project,
+                filename=image_name,
+                firebase_url=firebase_url,
+                assigned_to=None,
+                status='unassigned'
+            )
+
+            # Clean up temporary files
+            if os.path.exists(image_path):
+                os.remove(image_path)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+
+            return JsonResponse({'success': True, 'message': 'Image uploaded successfully!'})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'No image file uploaded'})
 
 
 class NextImageView(APIView):
@@ -168,7 +239,7 @@ class CheckAlreadyLabelImage(APIView):
             original_image_id = int(original_image_id)
             image = Image.objects.filter(original_image_id=original_image_id).first()
             if not image:
-                try :
+                try:
                     image = Image.objects.filter(id=original_image_id).first()
                 except:
                     pass
@@ -189,7 +260,8 @@ class UpdateImageStatusView(APIView):
     def patch(self, request, original_image_id):
         user = request.user
         original_image = get_object_or_404(OriginalImage, id=original_image_id)
-        print(original_image, user)
+        print(original_image, user, original_image.id)
+        print(original_image.assigned_to)
 
         if original_image.assigned_to != user:
             return Response({"error": "You are not authorized to update this image"}, status=status.HTTP_403_FORBIDDEN)
@@ -217,6 +289,7 @@ class CheckAndReassignStatus(APIView):
             print(image, 'imageeeeee')
             return Response({"success": False, "message": "Image already exists."}, status=status.HTTP_226_IM_USED)
         except Image.DoesNotExist:
+            # print("i am making changes here")
             # original_image.status = 'unassigned'
             # original_image.save()
             # OriginalImage.objects.filter(id=original_image_id).update(assigned_to=None)
@@ -227,9 +300,12 @@ class PreviousImageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id, current_image_id="undefined"):
+        new_value = request.GET.get('new', 'false')
         user = get_object_or_404(User, id=user_id)
-        user_images = list(Image.objects.filter(uploaded_by=user).order_by('-uploaded_at'))
-        print(user_images)
+        project_id = request.GET.get('project_id', None)
+        print(project_id)
+        user_images = list(Image.objects.filter(uploaded_by=user, **({"project_id": project_id} if project_id else {})).order_by('-uploaded_at'))[1:]
+
 
         if current_image_id == "undefined":
             previous_image = user_images[0]
@@ -253,7 +329,16 @@ class PreviousImageView(APIView):
                 return Response({"error": "Current image not found in user's uploads"}, status=404)
 
             try:
-                previous_image = user_images[current_index + 1]
+                if new_value == 'true':
+                    print(user_images)
+                    print(current_index)
+                    print('true is here')
+                    if current_index < 1:
+                        return Response({"error": "Current image not found in user's uploads"}, status=404)
+
+                    previous_image = user_images[current_index -1]
+                else:
+                    previous_image = user_images[current_index + 1]
                 serializer = ImageSerializer(previous_image)
                 labels = Label.objects.filter(image=previous_image)
                 label_serializer = LabelSerializer(labels, many=True)

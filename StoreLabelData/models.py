@@ -3,7 +3,8 @@ from LabelCarftProjectSetup.models import Project, ProjectCategory
 import os
 from UploadDataSetLableCraft.models import OriginalImage
 from django.contrib.auth.models import User
-
+import uuid
+from datetime import datetime
 
 def upload_to(instance, filename):
     return f'projects/annotated/{instance.project.id}/images/{filename}'
@@ -27,11 +28,19 @@ class Image(models.Model):
 class Label(models.Model):
     image = models.ForeignKey(Image, on_delete=models.CASCADE, related_name='labels')
     label = models.CharField(max_length=100, blank=True, null=True)
+    label_id = models.CharField(max_length=100, unique=True, editable=False)
     x = models.FloatField()
     y = models.FloatField()
     width = models.FloatField()
     height = models.FloatField()
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Auto-generate label_id if it doesn't exist
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        if not self.label_id:
+            self.label_id = str(uuid.uuid4()) + str(timestamp)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.label} '

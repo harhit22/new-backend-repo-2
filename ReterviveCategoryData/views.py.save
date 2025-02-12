@@ -15,10 +15,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F
-from rest_framework import serializers
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-import json
+
+
 
 class ImagesWithoutCategoryView(generics.ListAPIView):
     serializer_class = ImageSerializer
@@ -32,6 +30,7 @@ class ImagesWithoutCategoryView(generics.ListAPIView):
             queryset = Image.objects.exclude(id__in=Subquery(category_image_subquery))
 
         return queryset
+
 
 
 class AssignNextImageView(APIView):
@@ -65,38 +64,15 @@ class AssignNextImageView(APIView):
                     ).exclude(
                         category_statuses__category=category,
                         category_statuses__assigned_to__isnull=False
-                    ).exclude(original_image__status='in_progress').order_by('uploaded_at').first()
+                    ).order_by('uploaded_at').first()
 
                     if unassigned_image is None:
                         return Response({"error": "No more images available"}, status=status.HTTP_403_FORBIDDEN)
 
-                    if CategoryImageStatus.objects.filter(category=category, image=unassigned_image,
-                                                          status='in_progress').exists():
-                        unassigned_image = Image.objects.select_for_update().filter(
-                            project_id=project_id
-                        ).exclude(
-                            category_statuses__category=category,
-                            category_statuses__assigned_to__isnull=False
-                        ).order_by('uploaded_at').first()
-
                     status_instance = CategoryImageStatus.objects.create(
                         category=category,
                         image=unassigned_image,
-                        assigned_to=user,
-                        status='in_progress'
-                    )
-                else:
-                    # Assign the fetched status instance to the user
-                    status_instance.assigned_to = user
-                    status_instance.status = 'in_progress'
-                    status_instance.save()
-
-                serializer = CategoryImageStatusSerializer(status_instance)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+                        assigned_to=us
 
 class UpdateImageStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -183,58 +159,8 @@ class DeleteAlreadyLabelCategoryImage(APIView):
 
     def delete(self, request, category_id):
         labels_to_delete = ImageLabel.objects.filter(category_image_id=category_id)
-        print(labels_to_delete)
         deleted_count, _ = labels_to_delete.delete()
-        print(f"Deleted {deleted_count} labels for category_image_id: {category_id}")
         return JsonResponse({"success": True, "message": f"{deleted_count} labels deleted successfully"})
-
-
-
-@method_decorator(csrf_exempt, name='dispatch')  # For testing purposes; remove in production
-class UpdateCategoryLabel(APIView):
-    """
-    Class-based view for updating or creating category labels.
-    """
-
-    def post(self, request):
-        try:
-            # Parse the JSON request body
-            data = request.data
-
-            label_id = data.get("label_id")  # Check if label_id exists
-            print(label_id)
-            label_name = data.get("label")
-            x = data.get("x")
-            y = data.get("y")
-            width = data.get("width")
-            height = data.get("height")
-
-            # If label_id exists, update the label; otherwise, create a new one
-            if label_id:
-                try:
-                    label = ImageLabel.objects.get(label_id=label_id)
-                    label.label = label_name
-                    label.x = x
-                    label.y = y
-                    label.width = width
-                    label.height = height
-                    label.save()
-                except ImageLabel.DoesNotExist:
-                    return Response(
-                        {"error": "Label ID not found"},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
-
-            return Response(
-                {"message": "Label saved successfully", "label_id": label_id},
-                status=status.HTTP_200_OK,
-            )
-
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
 
 
 class PreviousImageView(APIView):

@@ -14,11 +14,10 @@ class OriginalImageSerializer(serializers.ModelSerializer):
 class LabelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Label
-        fields = ['label', 'x', 'y', 'width', 'height']
+        fields = ['label', 'x', 'y', 'width', 'height', 'label_id']
 
 
 class AnnotatedImageSerializer(serializers.ModelSerializer):
-    uploaded_by = serializers.StringRelatedField()
     labels = LabelSerializer(many=True)
 
     class Meta:
@@ -37,8 +36,14 @@ class LabeledImageSerializer(serializers.ModelSerializer):
     uploaded_by = serializers.StringRelatedField()
     labels = ImageLabelSerializer(many=True, source='category_image_labels')
     category_name = serializers.CharField(source='category', read_only=True)
+    uploaded_by_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = CategoryImage
-        fields = ['id', 'project', 'category', 'category_name', 'firebase_url', 'image_width', 'image_height', 'updated_at', 'uploaded_by', 'labels']
+        fields = ['id', 'project', 'category', 'category_name', 'firebase_url', 'image_width', 'image_height', 'updated_at', 'uploaded_by', 'labels', 'uploaded_by_name']
+
+    def get_annotated_by(self, obj):
+        # Get the user who initially annotated the image (uploaded_by field in Image model)
+        return obj.image.uploaded_by.username if obj.image.uploaded_by else None
+
 

@@ -33,7 +33,6 @@ def process_dataset_in_background(self, project_id, dataset_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 file = f"{uuid.uuid4()}_{int(time.time())}_{file}"
-                print(file)
                 # Upload file to Firebase Storage
                 blob = storage.bucket().blob(f'projects/{project_id}/{file}')
                 blob.upload_from_filename(file_path)
@@ -41,13 +40,16 @@ def process_dataset_in_background(self, project_id, dataset_path):
                 firebase_url = blob.public_url
 
                 # Save the OriginalImage record with Firebase URL
-                OriginalImage.objects.create(
-                    project=project,
-                    filename=file,
-                    firebase_url=firebase_url,
-                    assigned_to=None,
-                    status='unassigned'
-                )
+                try:
+                    OriginalImage.objects.create(
+                        project=project,
+                        filename=file,
+                        firebase_url=firebase_url,
+                        assigned_to=None,
+                        status='unassigned'
+                    )
+                except Exception as e:
+                    raise Exception(f"Failed to create OriginalImage: {str(e)}")
 
                 logger.info(f'Uploaded file {file} to Firebase and saved in database')
 

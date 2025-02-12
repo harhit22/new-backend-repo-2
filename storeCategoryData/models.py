@@ -28,6 +28,7 @@ class CategoryImage(models.Model):
 
 class ImageLabel(models.Model):
     category_image = models.ForeignKey(CategoryImage, on_delete=models.CASCADE, related_name='category_image_labels')
+    label_id = models.CharField(max_length=100, unique=False)
     label = models.CharField(max_length=100)
     x = models.FloatField()
     y = models.FloatField()
@@ -37,4 +38,3 @@ class ImageLabel(models.Model):
 
     def __str__(self):
         return f'Label: {self.label} for Image: {self.category_image}'
-

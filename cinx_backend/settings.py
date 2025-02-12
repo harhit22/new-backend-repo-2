@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure--$(n#78u+yts-mi4p49@h6$-r#cs1oc+2&1^)wcrk@xnz7+^t=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.68.171.158']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.68.171.158', '104.154.64.122']
 
 
 # Application definition
@@ -118,7 +118,7 @@ WSGI_APPLICATION = "cinx_backend.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'waste_labels_test',
+        'NAME': 'wevois_db_3',
         'USER': 'root',
         'PASSWORD': "mansi@123",
         'HOST': 'localhost',
@@ -208,7 +208,8 @@ JWT_SECRET_KEY = 'JWT_SECRET_KEY'
 
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
-    'http://34.68.171.158'
+    'http://34.68.171.158',
+    'http://104.154.64.122'
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -221,7 +222,7 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000','http://34.68.171.158']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000','http://34.68.171.158', 'http://104.154.64.122']
 
 
 # settings.py
