@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import NextImageView, CheckAlreadyLabelImage, UpdateImageStatusView, CheckAndReassignStatus,\
-    PreviousImageView
+    PreviousImageView, DeleteOriginalImageView
 from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
@@ -17,4 +17,5 @@ urlpatterns = [
     path('previous_image/<int:user_id>/<int:current_image_id>/', PreviousImageView.as_view(), name='previous_image'),
     path('previous_image/<int:user_id>/', PreviousImageView.as_view(), name='previous_image'),
     path('api/upload_image/<int:project_id>/', csrf_exempt(views.upload_image_by_feed), name='camera_feed'),
+    path('delete_original_image/',DeleteOriginalImageView.as_view(), name='delete-original-images' ),
 ]

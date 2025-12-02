@@ -1,0 +1,329 @@
+from django.http import JsonResponse
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from LabelCarftProjectSetup.models import Material, Toxicity, Condition, Grade, WasteType
+from storeCategoryData.models import CategoryImage, ImageLabel
+import yaml
+import random
+import requests
+import os
+from pathlib import Path
+import zipfile
+from django.http import FileResponse
+from django.conf import settings
+import json
+from django.http import StreamingHttpResponse
+from .tasks import generate_yolo_dataset
+import time
+import mimetypes
+from django.http import HttpResponse
+import traceback
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+import tensorflow as tf
+import mimetypes
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from django.views.decorators.csrf import csrf_exempt
+from PIL import Image
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications.efficientnet import preprocess_input
+from sklearn.metrics.pairwise import cosine_similarity
+import requests
+import numpy as np
+import aiohttp
+import asyncio
+from PIL import Image
+from io import BytesIO
+
+def read_in_chunks(file_path, chunk_size=1024):
+    """Generator to read a file in chunks."""
+    with open(file_path, 'rb') as f:
+        print(chunk)
+        while chunk := f.read(chunk_size):
+            yield chunk
+
+
+def get_range_header(range_header, file_size):
+    """
+    Parse the Range header from the request to determine the start and end bytes.
+    """
+    if not range_header:
+        return 0, file_size - 1
+
+    range_value = range_header.strip().replace("bytes=", "")
+    start, end = range_value.split("-")
+
+    start = int(start) if start else 0
+    end = int(end) if end else file_size - 1
+
+    return start, end
+
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DatasetDownloadView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        category_id = body.get('category_id')
+        category_name = body.get('category_name')
+        train_images_num = body.get('train_count')
+        val_images_num = body.get('val_count')
+        test_images_num = body.get('test_count')
+        is_blur = body.get('blur_images')
+        print(is_blur, "isblut")
+
+        # Call Celery task for background processing
+        result = generate_yolo_dataset.apply_async(
+            args=[category_id, category_name, train_images_num, val_images_num, test_images_num, is_blur]
+        )
+
+        # Respond immediately with task ID
+        return JsonResponse({'task_id': result.id}, status=202)
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TotalImagesByCategoryView(View):
+    def get(self, request, *args, **kwargs):
+        # Get the category ID from the request
+        category_id = request.GET.get('category_id')
+
+        # Check if category_id is provided
+        if not category_id:
+            return JsonResponse({'error': 'category_id is required'}, status=400)
+
+        # Get the total number of images for the given category ID
+        total_images = CategoryImage.objects.filter(category_id=category_id).count()
+
+        # Return the total number of images as JSON response
+        return JsonResponse({'category_id': category_id, 'total_images': total_images})
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TaskStatusView(View):
+    def get(self, request, *args, **kwargs):
+        task_id = request.GET.get('task_id')
+
+        if not task_id:
+            return JsonResponse({'error': 'task_id is required'}, status=400)
+
+        # Check the task status
+        result = generate_yolo_dataset.AsyncResult(task_id)
+
+        if result.ready():
+            task_result = result.result
+            if 'success' in task_result:
+                file_path = os.path.join(settings.BASE_DIR, 'dataset', 'yolo_dataset.zip')
+                if not os.path.exists(file_path):
+                    return JsonResponse({'error': 'File not found'}, status=404)
+
+                # Handle range requests
+                file_size = os.path.getsize(file_path)
+                range_header = request.headers.get("Range")
+                start, end = get_range_header(range_header, file_size)
+
+                chunk_size = end - start + 1
+                response = HttpResponse(
+                    open(file_path, 'rb').read()[start:end + 1],
+                    status=206,
+                    content_type=mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+                )
+                response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+                response['Accept-Ranges'] = 'bytes'
+                response['Content-Length'] = chunk_size
+                response['Content-Disposition'] = 'attachment; filename="yolo_dataset.zip"'
+                return response
+            else:
+                return JsonResponse({'error': 'Dataset generation failed'}, status=500)
+        else:
+            # Progress handling logic remains unchanged
+            progress = result.info  # This contains the `processed` and `total` values
+            processed = progress.get('processed', 0)
+            percent = int(progress.get('percent', 0))
+            total = progress.get('total', 0)
+            if percent > 99:
+                percent = 99
+            return JsonResponse({
+                'status': 'In progress',
+                'processed': processed,
+                'percent': percent,
+                'total': total
+            }, status=202)
+
+
+
+# ✅ Load EfficientNetB5 model (without top classification layer)
+model = EfficientNetB0(weights="imagenet", include_top=False, pooling="avg",)
+
+
+def load_image_from_url(image_url):
+    try:
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        img = Image.open(BytesIO(response.content)).convert("RGB")
+        return img  # Return in-memory PIL image
+    except Exception as e:
+        print(f"Error loading {image_url}: {e}")
+        return None  # Return None if failed
+
+
+# ✅ Function to Extract Feature Vector (Thread-Safe)
+def extract_features(img):
+    img = img.resize((240, 240))  # Resize for EfficientNet
+    img_array = np.array(img)
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img_array = preprocess_input(img_array)
+    features = model.predict(img_array)
+    return features.flatten()  # Return 1D feature vector
+
+
+def extract_features_batch(imgs):
+    """Extracts features for a batch of images."""
+    x = time.time()
+    img_arrays = [np.array(img.resize((240, 240))) for img in imgs]
+    y = time.time()
+    print(y-x)
+    img_arrays = np.array(img_arrays)  # Convert to NumPy array
+    img_arrays = preprocess_input(img_arrays)
+
+    features = model.predict(img_arrays)
+    return features  # Return batch of feature vectors
+
+
+
+async def fetch_image(url, session):
+    """Fetches an image asynchronously."""
+    try:
+        async with session.get(url, timeout=5) as response:
+            response.raise_for_status()
+            img = Image.open(BytesIO(await response.read())).convert("RGB")
+            return img
+    except Exception as e:
+        print(f"❌ Error loading {url}: {e}")
+        return None
+
+async def load_images_async(image_urls):
+    """Loads multiple images asynchronously."""
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_image(url, session) for url in image_urls]
+        return await asyncio.gather(*tasks)
+
+def load_images(image_urls):
+    """Wrapper function to run asyncio event loop."""
+    return asyncio.run(load_images_async(image_urls))
+
+
+def process_image_batch(img_urls, house_features):
+    """Loads multiple images, extracts features, and computes similarity in a batch."""
+
+
+
+# ✅ Function to Process a Single Image (Parallel Execution)
+def process_image(img_url, house_features):
+    """Downloads an image, extracts features, and computes similarity."""
+    img = load_image_from_url(img_url)  # Load image in memory
+    if img is None:
+        return None, None  # Skip if image fails to load
+    img_features = extract_features(img)  # Extract features
+    similarity = cosine_similarity([house_features], [img_features])[0][0]
+    return img_url, similarity  # Return similarity score
+
+try:
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+except AttributeError:
+    pass  # Ignore if running on Linux/Mac    # Load images (filter out failed ones)
+    x = time.time()
+    imgs = load_images(img_urls)
+    y = time.time()
+    print(x-y)
+    imgs = [img for img in imgs if img is not None]  # ✅ Remove None values
+
+    if not imgs:
+        return {}  # Return empty dict if all images failed
+
+    img_features = extract_features_batch(imgs)  # Extract batch features
+
+    similarities = {}
+    if img_features.size > 0:  # ✅ Fix: Ensure features exist
+        for i, img_url in enumerate(img_urls):
+            if i < len(img_features):
+                similarity = cosine_similarity([house_features], [img_features[i]])[0][0]
+                similarities[img_url] = similarity  # Store similarity score
+
+    return similarities
+
+
+# ✅ Function to Process a Single Image (Parallel Execution)
+def process_image(img_url, house_features):
+    """Downloads an image, extracts features, and computes similarity."""
+    img = load_image_from_url(img_url)  # Load image in memory
+    if img is None:
+        return None, None  # Skip if image fails to load
+    img_features = extract_features(img)  # Extract features
+    similarity = cosine_similarity([house_features], [img_features])[0][0]
+    return img_url, similarity  # Return similarity score
+
+try:
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+except AttributeError:
+    pass  # Ignore if running on Linux/Mac
+# ✅ Django View with Multi-Threading for Faster Execution
+@method_decorator(csrf_exempt, name='dispatch')
+class ProcessImageTask(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)  # Parse JSON request
+            house_image_url = data.get("houseImage")
+            image_urls = data.get("imageUrls", [])
+
+            if not house_image_url or not image_urls:
+                return JsonResponse({"error": "Missing houseImage or imageUrls"}, status=400)
+
+            print("🔹 Received House Image URL:", house_image_url)
+            print("🔹 Received Image URLs:", len(image_urls))
+
+            # ✅ Load House Image & Extract Features
+            house_img = load_image_from_url(house_image_url)
+            if house_img is None:
+                return JsonResponse({"error": "Failed to load houseImage"}, status=400)
+
+            house_features = extract_features(house_img)
+
+            # ✅ Process images in batches
+            batch_size = 10  # Adjust based on performance
+            similarities = {}
+
+            with ThreadPoolExecutor(max_workers=4) as executor:  # Use 4 threads
+                futures = [
+                    executor.submit(process_image_batch, image_urls[i:i + batch_size], house_features)
+                    for i in range(0, len(image_urls), batch_size)
+                ]
+
+                # Collect results
+                for future in futures:
+                    similarities.update(future.result())
+
+            # ✅ Sort by Similarity (Top 5 matches)
+            top_5_images = sorted(similarities.items(), key=lambda x: x[1], reverse=True)[:5]
+            top_5_images = [img_url for img_url, _ in top_5_images]
+
+            print("🔹 Top 5 Similar Images:", top_5_images)
+
+            return JsonResponse({
+                "success": True,
+                "message": "Top 5 similar images found",
+                "top_images": top_5_images
+            }, status=200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)

@@ -350,3 +350,17 @@ class PreviousImageView(APIView):
                 return Response(response, status=200)
             except:
                 return Response({"error": "Current image not found in user's uploads"}, status=404)
+
+
+class DeleteOriginalImageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        image_url = request.data.get("image_url")
+        print(image_url)
+        try:
+            image_obj = OriginalImage.objects.get(firebase_url=image_url)
+            image_obj.delete()  # Cascade will remove related annotated/labeled images
+            return Response({"message": "Image deleted."}, status=200)
+        except OriginalImage.DoesNotExist:
+            return Response({"error": "Image not found."}, status=404)

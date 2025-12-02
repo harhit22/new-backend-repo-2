@@ -221,7 +221,7 @@ class UpdateCategoryLabel(APIView):
                     label.save()
                 except ImageLabel.DoesNotExist:
                     return Response(
-                        {"error": "Label ID not found"},
+                        {"error":f"Label ID not found ${label_id}"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
 

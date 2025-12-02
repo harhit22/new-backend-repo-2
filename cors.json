@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["http://localhost:3000","http://34.68.171.158", "http://104.154.64.122/"],
+    "origin": ["http://localhost:3000","http://34.68.171.158", "http://104.154.64.122", "http://35.209.151.196", "https://scraploop.com"],
     "method": ["GET", "HEAD", "OPTIONS", "fetch", "PUT"],
     "responseHeader": ["Content-Type"],
     "maxAgeSeconds": 3600

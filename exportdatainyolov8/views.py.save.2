@@ -317,8 +317,7 @@ class ProcessImageTask(View):
             }, status=200)
 
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON data"}, status=400)
-
+K
 
 
 class GetDataForMonitoringTeamWasteCollectionApi(APIView):
@@ -326,31 +325,14 @@ class GetDataForMonitoringTeamWasteCollectionApi(APIView):
 
     # Helper function to calculate work time
 
-    def convert_to_12hr_format(self, time_str):
+    def convert_to_12hr_format(self,time_str):
         try:
             # Try parsing the time assuming it's in HH:MM format (24-hour)
             time_obj = datetime.strptime(time_str, "%H:%M")
             return time_obj.strftime("%I:%M %p")  # Convert to 12-hour format with AM/PM
         except ValueError:
             return time_str  # Return the original value if the format is invalid
-
     def calculate_work_time(self, duty_in_time, duty_out_time):
-        if not duty_in_time or not duty_out_time:
-            return ""
-        fmt = "%H:%M:%S"
-        try:
-            in_time = datetime.strptime(duty_in_time, fmt)
-            out_time = datetime.strptime(duty_out_time, fmt)
-            if out_time < in_time:
-                out_time += timedelta(days=1)
-            duration = out_time - in_time
-            hours, remainder = divmod(duration.seconds, 3600)
-            minutes = remainder // 60
-            return f"{hours}h {minutes}m"
-        except Exception:
-            return ""
-
-    def calculate_work_time_trip(self, duty_in_time, duty_out_time):
         if not duty_in_time or not duty_out_time:
             return ""
         fmt = "%H:%M"
@@ -409,157 +391,100 @@ class GetDataForMonitoringTeamWasteCollectionApi(APIView):
 
         if not zones_list:
             return Response([], status=status.HTTP_200_OK)
-        print(zones_list.keys())
+
         for zone in zones_list.keys():
-            if zone.lower() == 'binlifting':
-                print(zone)
-                # Fetch picking plan
+            # Now directly go to required path: zone/year/month/date
+            date_ref_path = f'WasteCollectionInfo/{zone}/{year}/{month_name}/{date}'
+            date_ref = db.reference(date_ref_path, app=app)
+            date_details = date_ref.get()
 
-                plan_path = f"DustbinData/DustbinPickingPlanHistory/{year}/{month_name}/{date}"
-                plan_data = db.reference(plan_path, app=app).get()
+            if not date_details:
+                continue
 
-                if not plan_data:
-                    continue
+            worker_details = date_details.get("WorkerDetails", {})
+            line_status = date_details.get("LineStatus", {})
+            summary = date_details.get("Summary", {})
 
-                for trip, trip_data in plan_data.items():
-                    if   trip.endswith("0000"):
-                        continue
-                    root_path = f"DustbinData/DustbinAssignment/{year}/{month_name}/{date}/{trip}"
-                    root_data = db.reference(root_path, app=app).get()
+            vehicle = worker_details.get("vehicle", "")
+            driver_id = worker_details.get("driver", "")
+            helper_id = worker_details.get("helper", "")
+            second_helper_id = worker_details.get("secondHelper", "")
 
-                    driver_id = root_data.get("driver", "")
+            duty_in_time = summary.get("dutyInTime", "")
+            duty_out_time = summary.get("dutyOutTime", "")
+            trip = summary.get('trip', '')
 
-                    helper_id = root_data.get("helper", "")
-                    second_helper_id = root_data.get("secondHelper", "")
-                    plan_name = root_data.get("planName", "")
+            work_time = self.calculate_work_time(
+                summary.get("dutyInTime", ""), summary.get("dutyOutTime", "")
+            )
 
-                    # Get work details
-                    work_detail = db.reference(f"DailyWorkDetail/{year}/{month_name}/{date}/{driver_id}",
-                                               app=app).get() or {}
-                    card_swaps = work_detail.get("card-swap-entries", {})
+            run_km = f'LocationHistory/{zone}/{year}/{month_name}/{date}'
+            run_km = db.reference(run_km, app=app)
+            run_km = run_km.get()
+            from datetime import datetime as dt, timedelta
 
-                    vehicle = work_detail.get("task1", {}).get("vehicle")
+            def parse_time_to_datetime(tstr, base_date):
+            try:
+                t = dt.strptime(tstr.strip(), "%H:%M").time()
+                return dt.combine(base_date, t)
+            except:
+                return None 
 
-                    in_times = [t for t, v in card_swaps.items() if v == "In"]
-                    out_times = [t for t, v in card_swaps.items() if v == "Out"]
+            entry = {
+                "Date": date,
+                "City": city,
+                "Zone": zone,
+                "Start Time": self.convert_to_12hr_format(summary.get("dutyInTime", "")),
+                "End Time": self.convert_to_12hr_format(summary.get("dutyOutTime", "")),
+                "Vehicle": vehicle,
+                "Driver Employee Id": driver_id,
+                "Helper Employee Id": helper_id,
+                'trip': trip,
+                "Second Helper Employee Id": second_helper_id,
+                "Work Time": work_time,
+                "Work Percentage": summary.get("workPercentage", ""),
+                "Run KM": f"{run_km / 1000} km" if run_km else "",  # Convert to kilometers
+                "Zone Run KM": f"{summary.get('wardCoveredDistance', 0) / 1000} km" if summary.get(
+                "wardCoveredDistance") else "",  # Convert to kilometers
+                "Remark": summary.get("remark", ""),
 
-                    if not in_times or not out_times:
-                        continue
+            }
 
-                    start_time = in_times[0]
+            formatted_data.append(entry)
 
-                    end_time = out_times[-1]
+            # if isinstance(line_status, list):
+            #     for trip_data in line_status:
+            #         print(trip_data)
+            #         if trip_data == None:
+            #             continue
+            #         # Assuming each entry is a dictionary, e.g., {'Status': 'LineCompleted', 'line-distance': '125'}
+            #         entry = {
+            #             "Date": date,
+            #             "City": city,
+            #             "Zone": zone,
+            #             "Start Time": trip_data.get("start-time", ""),
+            #             "End Time": trip_data.get("end-time", ""),
+            #             "Vehicle": vehicle,
+            #             "Driver Employee Id": driver_id,
+            #             "Helper Employee Id": helper_id,
+            #             "Second Helper Employee Id": second_helper_id,
+            #             "Status": trip_data.get("Status", ""),
+            #             "Line Distance": trip_data.get("line-distance", ""),
+            #             "Work Time": work_time,
+            #             "Work Percentage": summary.get("workPercentage", ""),
+            #             "Run KM": summary.get("runKm", ""),
+            #             "Zone Run KM": summary.get("zoneRunKm", ""),
+            #             "Remark": summary.get("remark", ""),
+            #             'trip':trip
+            #         }
+            #
+            # else:
+            #     # Log or skip if it's not a list
+            #     print(f"Unexpected line_status type for zone {zone} on {date}: {type(line_status)}")
 
-                    work_time = self.calculate_work_time(start_time, end_time)
+        return Response(formatted_data, status=s
 
-                    picked_dustbin = trip_data.get('pickedDustbin', '')
-                    picked_list = [b.strip() for b in picked_dustbin.split(",") if b.strip()]
-                    total_bin = int(trip_data.get('totalDustbin') or 0)
-                    picked_count = len(picked_list)
-                    work_done_percentage = (picked_count / total_bin) * 100 if total_bin else 0
 
-                    bin_entry = {
-                        "Date": date,
-                        "City": city,
-                        "Zone": f"BinLifting({plan_name})",
-                        "Start Time": self.convert_to_12hr_format(start_time),
-                        "End Time": self.convert_to_12hr_format(end_time),
-                        "Vehicle": vehicle,
-                        "Driver Employee Id": driver_id,
-                        "Helper Employee Id": helper_id,
-                        "Second Helper Employee Id": second_helper_id,
-                        "trip":"",
-                        "Work Time": work_time,
-                        "Work Percentage": round(work_done_percentage, 2),
-                        "Run KM": "",  # optional, can be estimated from route later
-                        "Zone Run KM": "",
-                        "Remark": "",
-                        "Assign Bin": total_bin,
-                        "Pick Bin": picked_count,
-
-                    }
-
-                    formatted_data.append(bin_entry)
-
-            elif not zone.startswith('bin') and not zone.startswith('Beed') and not zone.startswith('WetWaste') and not zone.startswith('Maint'):
-                # Now directly go to required path: zone/year/month/date
-                date_ref_path = f'WasteCollectionInfo/{zone}/{year}/{month_name}/{date}'
-                date_ref = db.reference(date_ref_path, app=app)
-                date_details = date_ref.get()
-
-                if not date_details:
-                    continue
-
-                worker_details = date_details.get("WorkerDetails", {})
-                line_status = date_details.get("LineStatus", {})
-                summary = date_details.get("Summary", {})
-
-                vehicle = worker_details.get("vehicle", "")
-                driver_id = worker_details.get("driver", "")
-                helper_id = worker_details.get("helper", "")
-                second_helper_id = worker_details.get("secondHelper", "")
-
-                duty_in_time = summary.get("dutyInTime", "")
-                duty_out_time = summary.get("dutyOutTime", "")
-                trip = summary.get('trip', '')
-                if ',' in duty_in_time and ',' in duty_out_time:
-                    duty_in_time_in = duty_in_time.split(',')[0]
-                    duty_out_time_out = duty_out_time.split(',')[-1]
-                    work_time = self.calculate_work_time_trip(duty_in_time_in,duty_out_time_out)
-                else:
-                    work_time = self.calculate_work_time_trip(
-                        summary.get("dutyInTime", ""), summary.get("dutyOutTime", "")
-                    )
-
-                run_km = f'LocationHistory/{zone}/{year}/{month_name}/{date}'
-                run_km = db.reference(run_km, app=app)
-                run_km = run_km.get()
-                distance = 0
-                start_counting = False
-                if run_km != None:
-                    for key in run_km:
-                        if not isinstance(run_km[key], dict):
-                            continue
-                        if key.strip() >= duty_in_time.strip():
-                            start_counting = True
-
-                        if start_counting:
-                            try:
-                                distance += run_km[key]['distance-in-meter']
-                            except:
-                                continue
-
-                        if key == duty_out_time:
-                            break
-                else:
-                    distance = 0
-
-                entry = {
-                    "Date": date,
-                    "City": city,
-                    "Zone": zone,
-                    "Start Time": self.convert_to_12hr_format(summary.get("dutyInTime", "")),
-                    "End Time": self.convert_to_12hr_format(summary.get("dutyOutTime", "")),
-                    "Vehicle": vehicle,
-                    "Driver Employee Id": driver_id,
-                    "Helper Employee Id": helper_id,
-
-                    "Second Helper Employee Id": second_helper_id,
-                    'trip': trip,
-                    "Work Time": work_time,
-                    "Work Percentage": summary.get("workPercentage", ""),
-                    "Run KM": f"{distance / 1000} km" if run_km else "",  # Convert to kilometers
-                    "Zone Run KM": f"{summary.get('wardCoveredDistance', 0) / 1000} km" if summary.get(
-                        "wardCoveredDistance") else "",  # Convert to kilometers
-                    "Remark": summary.get("remark", ""),
-                    "Assign Bin": "",
-                    "Pick Bin": "",
-
-                }
-
-                formatted_data.append(entry)
-
-        return Response(formatted_data, status=status.HTTP_200_OK)
 
 class GetDataForMonitoringTeamWasteCollectionAllCityApi(APIView):
     permission_classes = [AllowAny]
